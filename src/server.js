@@ -314,7 +314,7 @@ const attemptPurge = () => {
 
 // Main update function - fetches data and updates Discord
 const update = () => {
-  console.log("Updating server status...");
+  console.log("Checking server status...");
 
   // Update uptime data every 10 minutes
   const now = Date.now();
@@ -333,15 +333,16 @@ const update = () => {
 
         const data = parseData(rawData, previousServer);
 
-        if (previouslyUnreachable) {
-          if (
-            process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES !== "true"
-          ) {
+        // Sunucu erişilebilirlik durumu değiştiyse
+        if (previouslyUnreachable && data) {
+          if (process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES !== "true") {
             sendMessage("Server reachable");
           }
           db.server.unreachable = false;
+          fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
         }
 
+        // Sunucu durumu değiştiyse
         if (data) {
           const updateString = getUpdateString(
             data,
@@ -349,35 +350,39 @@ const update = () => {
             previousMods,
             previousCareerSavegame
           );
-          sendMessage(updateString);
-          db = data;
 
-          // If server just came online
-          if (data.server.online && !previousServer.online) {
-            sendServerStatusMessage("online", CONFIG.UPDATE_CHANNEL_ID);
+          // Sadece değişiklik varsa mesaj gönder
+          if (updateString) {
+            sendMessage(updateString);
           }
+
+          // Sunucu çevrimiçi durumu değiştiyse
+          if (data.server.online !== previousServer.online) {
+            sendServerStatusMessage(data.server.online ? "online" : "offline", CONFIG.UPDATE_CHANNEL_ID);
+          }
+
+          // Veritabanını güncelle
+          db = data;
+          fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+
+          // Bot durumunu güncelle
+          client.user.setActivity("Farming Simulator 25");
+          client.user.setStatus("online");
         } else {
+          // Sunucu çevrimdışı durumu değiştiyse
           if (previousServer.online) {
-            sendMessage(
-              "Server Status:: <:1006donotdisturb:1319749525283409971>"
-            );
+            sendMessage("Server Status:: <:1006donotdisturb:1319749525283409971>");
             sendServerStatusMessage("offline", CONFIG.UPDATE_CHANNEL_ID);
           }
 
           db.server.online = false;
           db.server.unreachable = false;
-        }
+          fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
 
-        // Update bot status
-        if (data?.server?.online) {
-          client.user.setActivity("Farming Simulator 25");
-          client.user.setStatus("online");
-        } else {
+          // Bot durumunu güncelle
           client.user.setActivity("Server unreachable", { type: "WATCHING" });
           client.user.setStatus("dnd");
         }
-
-        fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
       } catch (e) {
         console.error("❌ Error processing server data:", e.message);
       }
@@ -385,10 +390,10 @@ const update = () => {
     .catch((e) => {
       console.error("❌ Error fetching server data:", e.message);
       client.user.setActivity("Under Maintenance");
+      
+      // Sunucu erişilemez durumu değiştiyse
       if (!db.server.unreachable) {
-        if (
-          process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES !== "true"
-        ) {
+        if (process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES !== "true") {
           sendMessage("Server unreachable");
         }
         db.server.unreachable = true;
