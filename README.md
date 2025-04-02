@@ -105,10 +105,10 @@ dcfs-bot/
 │   └── utils/                # Yardımcı fonksiyonlar
 │       ├── utils.js          # Genel yardımcı fonksiyonlar
 │       └── purge.js          # Mesaj temizleme fonksiyonları
-├── watchdog.js               # Otomatik yeniden başlatma sistemi
+|       └── watchdog.js               # Otomatik yeniden başlatma sistemi
 ├── logs/                     # Log dosyaları (otomatik oluşturulur)
+├── data/                     # Tüm bilgier (otomatik  oluşturulur)
 ├── db.json                   # Veritabanı (otomatik oluşturulur)
-├── uptime_data.json          # Oyuncu süresi verileri (otomatik oluşturulur)
 ├── .env                      # Çevre değişkenleri konfigürasyonu
 ├── package.json              # Proje bağımlılıkları ve komutları
 └── README.md                 # Bu dosya
