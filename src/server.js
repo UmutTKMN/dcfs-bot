@@ -358,7 +358,7 @@ const update = () => {
         // Sunucu erişilebilirlik durumu değiştiyse
         if (previouslyUnreachable && data) {
           if (!CONFIG.DISABLE_UNREACHABLE_FOUND_MESSAGES) {
-            sendMessage("Server reachable");
+            sendMessage("");
           }
           db.server.unreachable = false;
           fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
@@ -393,7 +393,6 @@ const update = () => {
         } else {
           // Sunucu çevrimdışı durumu değiştiyse
           if (previousServer.online) {
-            sendMessage("Server Status:: <:1006donotdisturb:1319749525283409971>");
             sendServerStatusMessage("offline", CONFIG.UPDATE_CHANNEL_ID);
           }
 
@@ -416,7 +415,7 @@ const update = () => {
       // Sunucu erişilemez durumu değiştiyse
       if (!db.server.unreachable) {
         if (!CONFIG.DISABLE_UNREACHABLE_FOUND_MESSAGES) {
-          sendMessage("Server unreachable");
+          sendMessage("");
         }
         db.server.unreachable = true;
         fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
