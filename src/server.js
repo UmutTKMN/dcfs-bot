@@ -33,13 +33,10 @@ const CONFIG = {
   DISCORD_TOKEN: process.env.FS25_BOT_DISCORD_TOKEN,
   SERVER_STATS_URL: process.env.FS25_BOT_URL_SERVER_STATS,
   CAREER_SAVEGAME_URL: process.env.FS25_BOT_URL_CAREER_SAVEGAME,
-  UPTIME_FILE: process.env.FS25_BOT_UPTIME_FILE || "./data/uptime_data.json",
-  DB_PATH: process.env.FS25_BOT_DB_PATH || "./data/fs25_bot.json",
-  DAILY_SUMMARY_CHANNEL_ID:
-    process.env.FS25_BOT_DAILY_SUMMARY_CHANNEL_ID ||
-    process.env.DAILY_SUMMARY_CHANNEL_ID,
-  UPDATE_CHANNEL_ID:
-    process.env.FS25_BOT_UPDATE_CHANNEL_ID || process.env.UPDATE_CHANNEL_ID,
+  UPTIME_FILE: process.env.FS25_BOT_UPTIME_FILE,
+  DB_PATH: process.env.FS25_BOT_DB_PATH,
+  DAILY_SUMMARY_CHANNEL_ID: process.env.FS25_BOT_DAILY_SUMMARY_CHANNEL_ID,
+  UPDATE_CHANNEL_ID: process.env.FS25_BOT_UPDATE_CHANNEL_ID,
   DISCORD_SERVER_NAME: process.env.FS25_BOT_DISCORD_SERVER_NAME,
   DISCORD_CHANNEL_NAME: process.env.FS25_BOT_DISCORD_CHANNEL_NAME,
   POLL_INTERVAL_MINUTES: Math.max(
@@ -212,11 +209,6 @@ const getUpdateString = (
 
   const { game, version, name: serverName, mapName, online } = newData.server;
 
-  // Server status change
-  if (online && !previousServer.online) {
-    string += "Server Status:: <:2171online:1319749534204563466> \n";
-  }
-
   // Server info changes
   const dlcString = getModString(newData, previousMods, true);
   const modString = getModString(newData, previousMods, false);
@@ -294,6 +286,33 @@ const sendMessage = (message) => {
         );
       });
     });
+};
+
+// Send server status message to a specific channel
+const sendServerStatusMessage = (status, channelId) => {
+  if (!channelId) return;
+
+  const channel = client.channels.cache.get(channelId);
+  if (!channel) {
+    console.error(`❌ Channel not found for ID: ${channelId}`);
+    return;
+  }
+
+  let statusMessage = "";
+  let statusEmoji = "";
+
+  if (status === "online") {
+    statusEmoji = "<:2171online:1319749534204563466>";
+    statusMessage = "Server is now online";
+  } else if (status === "offline") {
+    statusEmoji = "<:1006donotdisturb:1319749525283409971>";
+    statusMessage = "Server is offline";
+  }
+
+  console.log(`Sending server status message to channel: ${channel.name}`);
+  channel.send(`${statusEmoji} ${statusMessage}`).catch((error) => {
+    console.error(`❌ Error sending status message: ${error.message}`);
+  });
 };
 
 // Message purging functionality
@@ -393,7 +412,7 @@ const update = () => {
     .catch((e) => {
       console.error("❌ Error fetching server data:", e.message);
       client.user.setActivity("Under Maintenance");
-      
+
       // Sunucu erişilemez durumu değiştiyse
       if (!db.server.unreachable) {
         if (!CONFIG.DISABLE_UNREACHABLE_FOUND_MESSAGES) {
