@@ -7,9 +7,9 @@ Bu Discord botu, Farming Simulator 25 sunucu durumunu izlemek ve Discord kanalla
 - **Sunucu Durumu İzleme:** Sunucunun çevrimiçi/çevrimdışı durumunu takip eder ve bildirir
 - **Mod ve DLC Takibi:** Sunucuya eklenen, güncellenen veya kaldırılan modları ve DLC'leri bildirir
 - **Finansal Durum Takibi:** Sunucunun finansal verilerindeki değişiklikleri takip eder
-- **Oyuncu Süresi İzleme:** Oyuncuların oyunda geçirdikleri süreyi takip eder
+- **Oyuncu Süresi İzleme:** Oyuncuların oyunda geçirdikleri süreyi ayrıntılı olarak takip eder ve raporlar
 - **Otomatik Mesaj Temizleme:** Belirli bir süreden sonra eski bot mesajlarını otomatik olarak temizler
-- **Günlük Raporlar:** Sunucu istatistiklerini belirli zamanlarda paylaşır
+- **Günlük Özet Raporları:** Sunucunun günlük istatistiklerini belirli zamanlarda kapsamlı bir şekilde paylaşır
 - **Güçlü Hata Toleransı:** Bağlantı kopması veya hata durumlarında otomatik olarak yeniden bağlanır
 - **Watchdog Mekanizması:** Bot tamamen çökse bile otomatik olarak yeniden başlatır
 
@@ -17,7 +17,8 @@ Bu Discord botu, Farming Simulator 25 sunucu durumunu izlemek ve Discord kanalla
 
 - Node.js (v16+)
 - Discord.js (v14+)
-- Farming Simulator 25 Dedicated Server (XML veri akışı erişimine sahip)
+- Farming Simulator 25 Dedicated Server (XML veri akışına erişim)
+- İnternet bağlantısı (Discord API ve FS25 sunucusuyla iletişim için)
 
 ## Kurulum
 
@@ -32,7 +33,16 @@ cd dcfs-bot
 npm install
 ```
 
-3. `.env.example` -> `.env` olarak düzenleyip ve yapılandırın
+3. `.env.example` dosyasını `.env` olarak kopyalayıp konfigüre edin
+```bash
+cp .env.example .env
+# Sonra .env dosyasını düzenleyin
+```
+
+4. Gerekli dizinlerin oluşturulduğundan emin olun
+```bash
+mkdir -p data logs
+```
 
 ## Kullanım
 
@@ -61,8 +71,8 @@ npm run update
 | FS25_BOT_URL_SERVER_STATS | FS25 sunucu istatistikleri XML URL'si |
 | FS25_BOT_URL_CAREER_SAVEGAME | FS25 kariyer kayıt dosyası URL'si |
 | FS25_BOT_UPTIME_FILE | Oyuncu süre takibi dosyasının yolu |
-| DAILY_SUMMARY_CHANNEL_ID | Günlük özet mesajlarının gönderileceği kanal ID'si |
-| UPDATE_CHANNEL_ID | Güncelleme mesajlarının gönderileceği kanal ID'si |
+| FS25_BOT_DAILY_SUMMARY_CHANNEL_ID | Günlük özet mesajlarının gönderileceği kanal ID'si |
+| FS25_BOT_UPDATE_CHANNEL_ID | Güncelleme mesajlarının gönderileceği kanal ID'si |
 | FS25_BOT_DISCORD_SERVER_NAME | Discord sunucu adı |
 | FS25_BOT_DISCORD_CHANNEL_NAME | Discord kanal adı |
 | FS25_BOT_POLL_INTERVAL_MINUTES | Sunucu durumunun kaç dakikada bir kontrol edileceği |
@@ -70,10 +80,15 @@ npm run update
 | FS25_BOT_PURGE_DISCORD_CHANNEL_HOUR | Mesaj temizleme saati |
 | FS25_BOT_DAILY_STATS_HOUR | Günlük istatistiklerin gönderileceği saat |
 | FS25_BOT_DAILY_STATS_MINUTE | Günlük istatistiklerin gönderileceği dakika |
+| FS25_BOT_DISABLE_SAVEGAME_MESSAGES | Kayıt dosyası bildirimlerini devre dışı bırakma |
+| FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES | Erişilemez sunucu mesajlarını devre dışı bırakma |
+| FS25_BOT_DISABLE_CERTIFICATE_VERIFICATION | SSL sertifika doğrulamasını devre dışı bırakma |
+| FS25_BOT_FETCH_RETRIES | API bağlantı hatası durumunda yeniden deneme sayısı |
+| FS25_BOT_FETCH_RETRY_DELAY_MS | Yeniden denemeler arasındaki bekleme süresi |
 
 ## Watchdog Yapılandırması
 
-Bot'un sürekli çalışmasını sağlayan watchdog aşağıdaki ayarları içerir:
+Bot'un sürekli çalışmasını sağlayan watchdog aşağıdaki ayarları içerir ve `src/watchdog.js` dosyasında veya `.env` dosyasında yapılandırılabilir:
 
 ```javascript
 const CONFIG = {
@@ -92,8 +107,17 @@ Bot bağlantı sorunları yaşıyor veya beklenmedik şekilde kapanıyorsa:
 1. `.env` dosyasındaki token ve URL'lerin doğru olduğundan emin olun
 2. Farming Simulator sunucusunun çalıştığını ve XML beslemesinin erişilebilir olduğunu kontrol edin
 3. Discord token'ınızın geçerli olduğunu doğrulayın
-4. `logs` klasöründeki günlük dosyalarını kontrol edin
+4. `logs` klasöründeki günlük dosyalarını inceleyin
 5. Watchdog ile başlatarak otomatik yeniden başlatmayı etkinleştirin: `npm run watchdog`
+6. Bağlantı sorunlarında `.env` dosyasında `FS25_BOT_FETCH_RETRIES` değerini artırın
+7. SSL hatalarında `FS25_BOT_DISABLE_CERTIFICATE_VERIFICATION=true` ayarını deneyin (güvenli olmayan ortamlarda)
+
+## Discord Bot Ayarları
+
+Discord Developer Portal'da botunuzu oluştururken şu izinleri etkinleştirdiğinizden emin olun:
+- `Bot` yetkisi
+- İntentler: `SERVER MEMBERS`, `MESSAGE CONTENT`, `GUILD MESSAGES`
+- Bot izinleri: `Send Messages`, `Manage Messages`, `Read Message History`, `Embed Links`
 
 ## Proje Yapısı
 
@@ -102,18 +126,37 @@ dcfs-bot/
 ├── src/                      # Kaynak kodları
 │   ├── server.js             # Ana bot uygulaması
 │   ├── update.js             # Veritabanı güncelleme scripti
+│   ├── watchdog.js           # Otomatik yeniden başlatma sistemi
 │   └── utils/                # Yardımcı fonksiyonlar
 │       ├── utils.js          # Genel yardımcı fonksiyonlar
 │       └── purge.js          # Mesaj temizleme fonksiyonları
-|       └── watchdog.js               # Otomatik yeniden başlatma sistemi
 ├── logs/                     # Log dosyaları (otomatik oluşturulur)
-├── data/                     # Tüm bilgier (otomatik  oluşturulur)
+├── data/                     # Tüm veriler (otomatik oluşturulur)
 ├── db.json                   # Veritabanı (otomatik oluşturulur)
 ├── .env                      # Çevre değişkenleri konfigürasyonu
 ├── package.json              # Proje bağımlılıkları ve komutları
 └── README.md                 # Bu dosya
 ```
 
+## Güncelleme
+
+Bot'un güncel kalmak için düzenli olarak:
+
+```bash
+# Son değişiklikleri çekin
+git pull
+
+# Bağımlılıkları güncelleyin
+npm update
+
+# veya tüm bağımlılıkları en son sürüme yükseltin
+npm install
+```
+
 ## Lisans
 
-Bu proje MIT lisansı altında lisanslanmıştır. 
+Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için LICENSE dosyasını inceleyebilirsiniz.
+
+## Katkıda Bulunma
+
+Hata raporları, özellik istekleri ve pull request'ler memnuniyetle karşılanır. Büyük değişiklikler için lütfen önce bir konu açarak değişikliği tartışın.
