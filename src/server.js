@@ -87,7 +87,7 @@ async function fetchUptimeData() {
     });
 
     // Server name
-    const serverName = data.Server.$.name || "Unknown Server";
+    const serverName = data.Server.$.name || "Bilinmeyen Sunucu";
 
     // Get player data from slots
     const playersData = data.Server.Slots.Player;
@@ -100,7 +100,7 @@ async function fetchUptimeData() {
 
     return { serverName, activePlayers };
   } catch (error) {
-    console.error("❌ Error fetching uptime data:", error.message);
+    console.error("❌ Çalışma süresi verisi alınırken hata:", error.message);
     return null;
   }
 }
@@ -113,7 +113,7 @@ async function updateUptimeData() {
     !uptimeData.activePlayers ||
     uptimeData.activePlayers.length === 0
   ) {
-    console.log("🔹 No active players found, JSON file not updated.");
+    console.log("🔹 Aktif oyuncu bulunamadı, JSON dosyası güncellenmedi.");
     return;
   }
 
@@ -124,9 +124,9 @@ async function updateUptimeData() {
   if (!fs.existsSync(dirPath)) {
     try {
       fs.mkdirSync(dirPath, { recursive: true });
-      console.log(`✅ Created directory: ${dirPath}`);
+      console.log(`✅ Dizin oluşturuldu: ${dirPath}`);
     } catch (error) {
-      console.error(`❌ Failed to create directory: ${dirPath}`, error.message);
+      console.error(`❌ Dizin oluşturulamadı: ${dirPath}`, error.message);
       return;
     }
   }
@@ -137,7 +137,7 @@ async function updateUptimeData() {
       currentData = JSON.parse(fs.readFileSync(CONFIG.UPTIME_FILE, "utf8"));
       if (!currentData.players) currentData.players = {};
     } catch (error) {
-      console.error("❌ Error reading JSON file:", error.message);
+      console.error("❌ JSON dosyası okunurken hata:", error.message);
       // Continue with empty players object
     }
   }
@@ -172,9 +172,9 @@ async function updateUptimeData() {
       JSON.stringify(currentData, null, 2),
       "utf8"
     );
-    console.log("✅ Player uptime data successfully updated.");
+    console.log("✅ Oyuncu çalışma süresi verileri başarıyla güncellendi.");
   } catch (error) {
-    console.error("❌ Error updating uptime file:", error.message);
+    console.error("❌ Çalışma süresi dosyası güncellenirken hata:", error.message);
   }
 }
 
@@ -221,7 +221,7 @@ const getUpdateString = (
     !!dlcString ||
     !!modString
   ) {
-    string += `**${serverName}**\n**${game}** *(${version})*\n**Map:** ${mapName} **DLC**: *${dlcCount}*, **Mod**: *${modCount}*\n`;
+    string += `**${serverName}**\n**${game}** *(${version})*\n**Harita:** ${mapName} **DLC**: *${dlcCount}*, **Mod**: *${modCount}*\n`;
     string += dlcString;
     string += modString;
   }
@@ -241,14 +241,14 @@ const getUpdateString = (
       if (money < previousCareerSavegame.money) {
         moneyDifferenceSign = "-";
       }
-      string += `<a:MoneySoaring:1319029763398041772> **Financial Activity:** *${money.toLocaleString(
+      string += `<a:MoneySoaring:1319029763398041772> **Finansal Etkinlik:** *${money.toLocaleString(
         "en-GB"
       )} (${moneyDifferenceSign}${moneyDifferenceAbsolute.toLocaleString(
         "en-GB"
       )}).*\n`;
     }
     if (previousCareerSavegame.playTime !== playTime) {
-      string += `<a:pixel_clock:1319030004411273297> **Time Spent:** *${formatMinutes(
+      string += `<a:pixel_clock:1319030004411273297> **Zaman Harcanılan:** *${formatMinutes(
         playTime
       )}*.\n`;
     }
@@ -278,10 +278,10 @@ const sendMessage = (message) => {
         channel.send
     )
     .forEach((channel) => {
-      console.log(`Sending message to: ${channel.guild.name}: ${channel.name}`);
+      console.log(`Mesaj gönderiliyor: ${channel.guild.name}: ${channel.name}`);
       channel.send(message).catch((error) => {
         console.error(
-          `❌ Error sending message to ${channel.name}:`,
+          `❌ ${channel.name} kanalına mesaj gönderilirken hata:`,
           error.message
         );
       });
@@ -294,7 +294,7 @@ const sendServerStatusMessage = (status, channelId) => {
 
   const channel = client.channels.cache.get(channelId);
   if (!channel) {
-    console.error(`❌ Channel not found for ID: ${channelId}`);
+    console.error(`❌ Kanal bulunamadı, ID: ${channelId}`);
     return;
   }
 
@@ -303,15 +303,15 @@ const sendServerStatusMessage = (status, channelId) => {
 
   if (status === "online") {
     statusEmoji = "<:2171online:1319749534204563466>";
-    statusMessage = "Server is now online";
+    statusMessage = "Sunucu şu anda çevrimiçi";
   } else if (status === "offline") {
     statusEmoji = "<:1006donotdisturb:1319749525283409971>";
-    statusMessage = "Server is offline";
+    statusMessage = "Sunucu çevrimdışı";
   }
 
-  console.log(`Sending server status message to channel: ${channel.name}`);
+  console.log(`Durum mesajı gönderiliyor: ${channel.name}`);
   channel.send(`${statusEmoji} ${statusMessage}`).catch((error) => {
-    console.error(`❌ Error sending status message: ${error.message}`);
+    console.error(`❌ Durum mesajı gönderilirken hata: ${error.message}`);
   });
 };
 
@@ -320,13 +320,13 @@ const attemptPurge = () => {
   const now = new Date().getTime();
   if (willPurge() && now >= nextPurge) {
     nextPurge = getNextPurge();
-    console.log("Looking for messages to purge...");
+    console.log("Temizlenecek mesajlar aranıyor...");
     try {
       purgeOldMessages(client);
     } catch (e) {
-      console.error("❌ Error purging messages:", e.message);
+      console.error("❌ Mesajlar temizlenirken hata:", e.message);
     }
-    console.log(`Next purge will be ${new Date(nextPurge)}`);
+    console.log(`Sonraki temizleme ${new Date(nextPurge)} tarihinde olacak`);
   }
 };
 
@@ -336,7 +336,7 @@ const attemptPurge = () => {
 
 // Main update function - fetches data and updates Discord
 const update = () => {
-  console.log("Checking server status...");
+  console.log("Sunucu durumu kontrol ediliyor...");
 
   // Update uptime data every 10 minutes
   const now = Date.now();
@@ -401,16 +401,16 @@ const update = () => {
           fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
 
           // Bot durumunu güncelle
-          client.user.setActivity("Server unreachable", { type: "WATCHING" });
+          client.user.setActivity("Sunucu erişilemez", { type: "WATCHING" });
           client.user.setStatus("dnd");
         }
       } catch (e) {
-        console.error("❌ Error processing server data:", e.message);
+        console.error("❌ Sunucu verisi işlenirken hata:", e.message);
       }
     })
     .catch((e) => {
-      console.error("❌ Error fetching server data:", e.message);
-      client.user.setActivity("Under Maintenance");
+      console.error("❌ Sunucu verisi alınırken hata:", e.message);
+      client.user.setActivity("Bakım Altında");
 
       // Sunucu erişilemez durumu değiştiyse
       if (!db.server.unreachable) {
@@ -438,7 +438,7 @@ function scheduleDailyMessage(hour, minute, callback) {
   const delay = target - now;
   const dayInMillis = 24 * 60 * 60 * 1000;
 
-  console.log(`✅ Daily stats scheduled for ${target.toLocaleString()}`);
+  console.log(`✅ Günlük istatistikler ${target.toLocaleString()} için planlandı`);
 
   setTimeout(() => {
     callback();
@@ -453,13 +453,13 @@ function scheduleDailyMessage(hour, minute, callback) {
 // Format player uptime stats and send as embed
 function sendUptimeData() {
   if (!fs.existsSync(CONFIG.UPTIME_FILE)) {
-    console.error(`❌ Uptime file not found: ${CONFIG.UPTIME_FILE}`);
+    console.error(`❌ Çalışma süresi dosyası bulunamadı: ${CONFIG.UPTIME_FILE}`);
     return;
   }
 
   fs.readFile(CONFIG.UPTIME_FILE, "utf8", (err, data) => {
     if (err) {
-      console.error("❌ Could not read uptime file:", err.message);
+      console.error("❌ Çalışma süresi dosyası okunamadı:", err.message);
       return;
     }
 
@@ -468,7 +468,7 @@ function sendUptimeData() {
       const players = jsonData.players;
 
       if (!players || Object.keys(players).length === 0) {
-        console.warn("⚠️ No player data found in uptime file.");
+        console.warn("⚠️ Çalışma süresi dosyasında oyuncu verisi bulunamadı.");
         return;
       }
 
@@ -494,11 +494,11 @@ function sendUptimeData() {
       // Create embed with player stats
       const embed = new EmbedBuilder()
         .setColor(getRandomColor())
-        .setTitle("<a:pixel_clock:1319030004411273297> Time Spent In Game\n")
+        .setTitle("<a:pixel_clock:1319030004411273297> Oyunda Harcanan Zaman\n")
         .setDescription(playerStats)
         .setTimestamp()
         .setFooter({
-          text: "Server Statistics",
+          text: "Sunucu İstatistikleri",
           iconURL: botAvatarURL,
         });
 
@@ -509,18 +509,18 @@ function sendUptimeData() {
       if (channel) {
         channel
           .send({ embeds: [embed] })
-          .then(() => console.log("✅ Player stats message sent successfully."))
+          .then(() => console.log("✅ Oyuncu istatistikleri mesajı başarıyla gönderildi."))
           .catch((error) =>
-            console.error("❌ Error sending player stats:", error.message)
+            console.error("❌ Oyuncu istatistikleri gönderilirken hata:", error.message)
           );
       } else {
         console.error(
-          "❌ Daily summary channel not found! ID:",
+          "❌ Günlük özet kanalı bulunamadı! ID:",
           CONFIG.DAILY_SUMMARY_CHANNEL_ID
         );
       }
     } catch (parseError) {
-      console.error("❌ JSON parse error:", parseError.message);
+      console.error("❌ JSON ayrıştırma hatası:", parseError.message);
     }
   });
 }
@@ -532,11 +532,11 @@ function sendUptimeData() {
 // Setup and connect the Discord client with retry logic
 const setupDiscordClient = async () => {
   try {
-    console.log('Setting up Discord client...');
+    console.log('Discord istemcisi ayarlanıyor...');
 
     // Login to Discord
     await client.login(CONFIG.DISCORD_TOKEN);
-    console.log("✅ Connected to Discord!");
+    console.log("✅ Discord'a bağlanıldı!");
 
     // Reset reconnection counter on successful connection
     reconnectAttempts = 0;
@@ -544,7 +544,7 @@ const setupDiscordClient = async () => {
 
     return true;
   } catch (err) {
-    console.error("❌ Failed to connect to Discord:", err.message);
+    console.error("❌ Discord'a bağlanılamadı:", err.message);
     return false;
   }
 };
@@ -557,7 +557,7 @@ const handleReconnection = async () => {
 
   if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
     reconnectAttempts++;
-    console.log(`Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${RECONNECT_DELAY / 1000} seconds...`);
+    console.log(`Yeniden bağlanmaya çalışılıyor (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}), ${RECONNECT_DELAY / 1000} saniye içinde...`);
 
     setTimeout(async () => {
       const success = await setupDiscordClient();
@@ -566,26 +566,26 @@ const handleReconnection = async () => {
       }
     }, RECONNECT_DELAY);
   } else {
-    console.error(`❌ Maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Please check your connection and restart the bot manually.`);
+    console.error(`❌ Maksimum yeniden bağlanma denemesi (${MAX_RECONNECT_ATTEMPTS}) aşıldı. Lütfen bağlantınızı kontrol edin ve botu manuel olarak yeniden başlatın.`);
     isReconnecting = false;
   }
 };
 
 // Modify error event to use reconnection
 client.on("error", (error) => {
-  console.error("❌ Discord client error:", error.message);
+  console.error("❌ Discord istemci hatası:", error.message);
   handleReconnection();
 });
 
 // Add disconnect handler
 client.on("disconnect", (event) => {
-  console.error(`❌ Discord client disconnected with code ${event.code}. Reason: ${event.reason}`);
+  console.error(`❌ Discord istemcisi ${event.code} koduyla bağlantısı kesildi. Sebep: ${event.reason}`);
   handleReconnection();
 });
 
 // Add reconnect event
 client.on("reconnecting", () => {
-  console.log("⏳ Discord client reconnecting...");
+  console.log("⏳ Discord istemcisi yeniden bağlanıyor...");
 });
 
 // Update the initialization code
@@ -596,9 +596,9 @@ const init = async () => {
     if (!fs.existsSync(dbDir)) {
       try {
         fs.mkdirSync(dbDir, { recursive: true });
-        console.log(`✅ Created directory: ${dbDir}`);
+        console.log(`✅ Dizin oluşturuldu: ${dbDir}`);
       } catch (error) {
-        console.error(`❌ Failed to create directory ${dbDir}:`, error.message);
+        console.error(`❌ ${dbDir} dizini oluşturulamadı:`, error.message);
       }
     }
 
@@ -607,10 +607,10 @@ const init = async () => {
       if (fs.existsSync(CONFIG.DB_PATH)) {
         const dbContent = fs.readFileSync(CONFIG.DB_PATH, 'utf8');
         db = JSON.parse(dbContent);
-        console.log('✅ Database loaded');
+        console.log('✅ Veritabanı yüklendi');
       }
     } catch (e) {
-      console.error(`❌ Unable to read database: ${CONFIG.DB_PATH}`, e.message);
+      console.error(`❌ Veritabanı okunamadı: ${CONFIG.DB_PATH}`, e.message);
       db = getDefaultDatabase();
     }
 
@@ -620,14 +620,14 @@ const init = async () => {
       handleReconnection();
     }
   } catch (error) {
-    console.error("❌ Initialization error:", error.message);
+    console.error("❌ Başlatma hatası:", error.message);
     handleReconnection();
   }
 };
 
 // Discord ready event
 client.on("ready", () => {
-  console.log(`✅ Bot is running as ${client.user.tag}!`);
+  console.log(`✅ Bot ${client.user.tag} olarak çalışıyor!`);
 
   // Setup message purging
   if (willPurge()) {
@@ -635,7 +635,7 @@ client.on("ready", () => {
       attemptPurge();
     } else {
       nextPurge = getNextPurge();
-      console.log(`✅ First purge scheduled for ${new Date(nextPurge)}`);
+      console.log(`✅ İlk temizleme ${new Date(nextPurge)} tarihinde planlandı`);
     }
   }
 
@@ -659,27 +659,27 @@ client.on("ready", () => {
 
 // Warning event
 client.on("warn", (info) => {
-  console.warn("⚠️ Discord client warning:", info);
+  console.warn("⚠️ Discord istemci uyarısı:", info);
 });
 
 // Process handlers for graceful shutdown
 process.on("SIGINT", async () => {
-  console.log("SIGINT received. Shutting down bot...");
+  console.log("SIGINT alındı. Bot kapatılıyor...");
   process.exit(0);
 });
 
 process.on("SIGTERM", async () => {
-  console.log("SIGTERM received. Shutting down bot...");
+  console.log("SIGTERM alındı. Bot kapatılıyor...");
   process.exit(0);
 });
 
 process.on("beforeExit", (code) => {
-  console.log(`Process beforeExit event with code: ${code}`);
+  console.log(`İşlem beforeExit olayı, kod: ${code}`);
 });
 
 // Improve the error handling
 process.on("uncaughtException", (error) => {
-  console.error("❌ Uncaught Exception:", error);
+  console.error("❌ Yakalanmayan Hata:", error);
   // Don't exit immediately on uncaught exception
   // Instead log it and let the reconnection mechanism handle it if needed
   if (error.message.includes("ECONNRESET") ||
@@ -699,16 +699,16 @@ const startHeartbeat = () => {
   }
 
   heartbeatTimer = setInterval(() => {
-    console.log("💓 Bot heartbeat - still running");
+    console.log("💓 Bot kalp atışı - hala çalışıyor");
 
     // Check if client is connected and reconnect if needed
     if (!client.isReady()) {
-      console.warn("⚠️ Discord client is not ready during heartbeat check");
+      console.warn("⚠️ Kalp atışı kontrolü sırasında Discord istemcisi hazır değil");
       handleReconnection();
     }
   }, HEARTBEAT_INTERVAL);
 
-  console.log(`✅ Heartbeat started, checking every ${HEARTBEAT_INTERVAL / 1000 / 60} minutes`);
+  console.log(`✅ Kalp atışı başlatıldı, her ${HEARTBEAT_INTERVAL / 1000 / 60} dakikada bir kontrol ediliyor`);
 };
 
 // Add cleanup for the heartbeat timer
@@ -717,7 +717,7 @@ onExit(() => {
     clearInterval(heartbeatTimer);
   }
 
-  console.log("Logging out from Discord...");
+  console.log("Discord'dan çıkış yapılıyor...");
   client.destroy();
 });
 

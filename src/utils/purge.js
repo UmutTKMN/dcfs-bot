@@ -24,7 +24,7 @@ const fetchMessages = async (channel, lastKey) => {
       ...(lastKey && { before: lastKey }),
     });
   } catch (error) {
-    console.error(`❌ Error fetching messages: ${error.message}`);
+    console.error(`❌ Mesajlar alınırken hata: ${error.message}`);
     return new Map(); // Return empty collection on error
   }
 };
@@ -128,28 +128,28 @@ const purge = {
               });
 
             if (botMessagesToPurge.length > 0) {
-              console.log(`Purging ${botMessagesToPurge.length} of ${botMessages.length} messages...`);
+              console.log(`${botMessagesToPurge.length} mesaj ${botMessages.length} mesaj içinden temizleniyor...`);
 
               // Use Promise.allSettled to handle message deletion without crashing if some fail
               const deletionPromises = botMessagesToPurge.map(message => 
                 message.delete().catch(err => {
-                  console.error(`Failed to delete message ID ${message.id}: ${err.message}`);
+                  console.error(`${message.id} ID'li mesaj silinirken hata: ${err.message}`);
                   return null; // Return null for failed deletions
                 })
               );
               
               await Promise.allSettled(deletionPromises);
-              console.log('Purge completed');
+              console.log('Temizleme tamamlandı');
             }
           } catch (err) {
-            console.error(`Error during channel purge process: ${err.message}`);
+            console.error(`Kanal temizleme işlemi sırasında hata: ${err.message}`);
           }
         });
       } else if (channels.size > 1) {
-        console.warn('Not purging. Ambiguous server/channel.', channels.size);
+        console.warn('Temizleme yapılmıyor. Belirsiz sunucu/kanal.', channels.size);
       }
     } catch (err) {
-      console.error(`❌ Critical purge error: ${err.message}`);
+      console.error(`❌ Kritik temizleme hatası: ${err.message}`);
     }
   },
 };
