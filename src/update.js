@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv-flow').config();
 
-const dbPath = process.env.FS25_BOT_DB_PATH;
+const dbPath = process.env.FS25_BOT_DB_PATH || './data/fs25_bot.json';
 
 const {
   getDataFromAPI,
@@ -10,51 +10,55 @@ const {
   getDefaultDatabase,
 } = require('./utils/utils');
 
+/**
+ * Veritabanı dosyasını günceller
+ * Farming Simulator sunucusundan veri çeker ve veritabanı dosyasına yazar
+ */
 const update = async () => {
-  console.log('Updating ...');
+  console.log('Veritabanı güncelleniyor...');
   
   try {
-    // Ensure database directory exists
+    // Veritabanı dizininin varlığını kontrol et ve oluştur
     const dbDir = path.dirname(dbPath);
     if (!fs.existsSync(dbDir)) {
       fs.mkdirSync(dbDir, { recursive: true });
-      console.log(`Created directory: ${dbDir}`);
+      console.log(`✅ Dizin oluşturuldu: ${dbDir}`);
     }
     
-    // Get and process data
+    // Veriyi çek ve işle
     const rawData = await getDataFromAPI();
     const data = parseData(rawData);
     
     if (data) {
       fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), 'utf8');
-      console.log('Database written');
+      console.log('✅ Veritabanı yazıldı');
     } else {
-      // Create default database if server appears offline
+      // Sunucu çevrimdışı görünüyorsa varsayılan veritabanı oluştur
       const defaultData = getDefaultDatabase();
       fs.writeFileSync(dbPath, JSON.stringify(defaultData, null, 2), 'utf8');
-      console.log('Server appears to be offline, created default database');
+      console.log('⚠️ Sunucu çevrimdışı görünüyor, varsayılan veritabanı oluşturuldu');
     }
   } catch (e) {
-    console.error('Error during update process:', e);
+    console.error('❌ Güncelleme işlemi sırasında hata:', e);
     
-    // Try to write a default database if an error occurs
+    // Hata durumunda varsayılan veritabanı oluşturmayı dene
     try {
       const defaultData = getDefaultDatabase();
       fs.writeFileSync(dbPath, JSON.stringify(defaultData, null, 2), 'utf8');
-      console.log('Error encountered, created default database');
+      console.log('⚠️ Hata oluştu, varsayılan veritabanı oluşturuldu');
     } catch (writeError) {
-      console.error('Failed to write default database:', writeError);
+      console.error('❌ Varsayılan veritabanı yazılamadı:', writeError);
     }
   }
 };
 
-// Use a promise to run the update and properly handle errors
+// Güncelleme işlemini çalıştır ve hataları düzgün şekilde yönet
 update()
   .then(() => {
-    console.log('Update completed successfully');
+    console.log('✅ Güncelleme başarıyla tamamlandı');
     process.exit(0);
   })
   .catch((error) => {
-    console.error('Update failed:', error);
+    console.error('❌ Güncelleme başarısız:', error);
     process.exit(1);
   });

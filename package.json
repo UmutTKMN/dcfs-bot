@@ -2,17 +2,17 @@
   "name": "dcfs-bot",
   "version": "0.1.0",
   "private": true,
-  "main": "./bin/server.js",
+  "main": "./src/server.js",
   "bin": {
-    "discord-bot": "./bin/server.js"
+    "discord-bot": "./src/server.js"
   },
   "scripts": {
     "start": "node ./src/server.js",
     "update": "node ./src/update.js",
-    "dev": "node ./bin/server.js -e js",
-    "watchdog": "node ./watchdog.js",
-    "start:watchdog": "node ./watchdog.js",
-    "start:prod": "NODE_ENV=production node ./watchdog.js",
+    "dev": "node ./src/server.js -e js",
+    "watchdog": "node ./src/watchdog.js",
+    "start:watchdog": "node ./src/watchdog.js",
+    "start:prod": "NODE_ENV=production node ./src/watchdog.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {

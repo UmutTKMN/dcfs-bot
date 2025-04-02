@@ -2,6 +2,21 @@ const {
   PermissionsBitField, ChannelType,
 } = require('discord.js');
 
+// Çevre değişkenlerini güvenli şekilde okuma
+const getEnvValue = {
+  number: (key, defaultValue = -1) => {
+    const value = parseInt(process.env[key], 10);
+    return isNaN(value) ? defaultValue : value;
+  },
+  string: (key, defaultValue = "") => {
+    return process.env[key] || defaultValue;
+  },
+  boolean: (key, defaultValue = false) => {
+    if (process.env[key] === undefined) return defaultValue;
+    return process.env[key] === "true";
+  }
+};
+
 const fetchMessages = async (channel, lastKey) => {
   try {
     return await channel.messages.fetch({
@@ -14,40 +29,37 @@ const fetchMessages = async (channel, lastKey) => {
   }
 };
 
-const getPurgeTime = () => (parseInt(
-  process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_AFTER_DAYS,
-  10,
-) || -1) * 24 * 60 * 60 * 1000;
+const getPurgeTime = () => getEnvValue.number('FS25_BOT_PURGE_DISCORD_CHANNEL_AFTER_DAYS', -1) * 24 * 60 * 60 * 1000;
 
-const getPurgeLines = () => parseInt(
-  process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_AFTER_LINES,
-  10,
-) || -1;
+const getPurgeLines = () => getEnvValue.number('FS25_BOT_PURGE_DISCORD_CHANNEL_AFTER_LINES', -1);
 
 const purge = {
   getNextPurge: () => {
     const now = new Date().getTime();
     const timeToday = now % (24 * 60 * 60 * 1000);
     const upcomingMidnight = now - timeToday + (24 * 60 * 60 * 1000);
-    const purgeHour = Math.max(parseInt(process.env
-      .FS25_BOT_PURGE_DISCORD_CHANNEL_HOUR, 10), 0) || 2;
+    const purgeHour = getEnvValue.number('FS25_BOT_PURGE_DISCORD_CHANNEL_HOUR', 2, 0);
     return upcomingMidnight + (purgeHour * 60 * 60 * 1000);
   },
 
-  willPurge: () => (process.env
-    .FS25_BOT_PURGE_DISCORD_CHANNEL_SERVER_NAME // if we have a server to purge
+  willPurge: () => {
+    const purgeServerName = getEnvValue.string('FS25_BOT_PURGE_DISCORD_CHANNEL_SERVER_NAME');
+    const purgeChannelName = getEnvValue.string('FS25_BOT_PURGE_DISCORD_CHANNEL_NAME');
+    const botServerName = getEnvValue.string('FS25_BOT_DISCORD_SERVER_NAME');
+    const botChannelName = getEnvValue.string('FS25_BOT_DISCORD_CHANNEL_NAME');
+    
+    return (
+      purgeServerName // if we have a server to purge
       // and we have a channel to purge
-      && process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_NAME
+      && purgeChannelName
       // and we don't have a posting server name, or we do and it matches the purge server name
-      && (!process.env.FS25_BOT_DISCORD_SERVER_NAME
-          || process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_SERVER_NAME
-          === process.env.FS25_BOT_DISCORD_SERVER_NAME)
+      && (!botServerName || purgeServerName === botServerName)
       // and we don't have a posting channel name, or we do and it matches the purge channel name
-      && (!process.env.FS25_BOT_DISCORD_CHANNEL_NAME
-        || process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_NAME
-        === process.env.FS25_BOT_DISCORD_CHANNEL_NAME))
+      && (!botChannelName || purgeChannelName === botChannelName)
       // and we have a time or lines to purge
-      && (getPurgeTime() >= 0 || getPurgeLines() >= 0),
+      && (getPurgeTime() >= 0 || getPurgeLines() >= 0)
+    );
+  },
 
   purgeOldMessages: async (client) => {
     if (!client) {
@@ -55,11 +67,14 @@ const purge = {
     }
 
     try {
+      const purgeServerName = getEnvValue.string('FS25_BOT_PURGE_DISCORD_CHANNEL_SERVER_NAME');
+      const purgeChannelName = getEnvValue.string('FS25_BOT_PURGE_DISCORD_CHANNEL_NAME');
+      
       const channels = client.channels.cache.filter((channel) => (
       // if the server name matches
-        channel.guild?.name === process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_SERVER_NAME
+        channel.guild?.name === purgeServerName
           // and the channel name matches
-          && channel.name === process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_NAME)
+          && channel.name === purgeChannelName)
           // channel is a text channel
           && channel.type === ChannelType.GuildText
           // we have permission to view

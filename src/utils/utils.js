@@ -6,8 +6,24 @@ const _ = require("lodash");
 const convert = require("xml-js");
 const fetch = require("fetch-retry")(global.fetch);
 
-const retries = Math.max(parseInt(process.env.FS25_BOT_FETCH_RETRIES, 10), 1) || 5;
-const retryDelay = Math.max(parseInt(process.env.FS25_BOT_FETCH_RETRY_DELAY_MS, 10), 1) || 2000;
+const ConfigUtils = {
+  getNumber: (envVar, defaultValue = 0, minValue = null) => {
+    const value = parseInt(process.env[envVar], 10) || defaultValue;
+    return minValue !== null ? Math.max(value, minValue) : value;
+  },
+  
+  getString: (envVar, defaultValue = "") => {
+    return process.env[envVar] || defaultValue;
+  },
+  
+  getBoolean: (envVar, defaultValue = false) => {
+    if (process.env[envVar] === undefined) return defaultValue;
+    return process.env[envVar] === "true";
+  }
+};
+
+const retries = ConfigUtils.getNumber("FS25_BOT_FETCH_RETRIES", 3, 1);
+const retryDelay = ConfigUtils.getNumber("FS25_BOT_FETCH_RETRY_DELAY_MS", 2000, 1);
 
 const utils = {
   getDefaultDatabase: () =>

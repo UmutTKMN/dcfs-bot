@@ -33,8 +33,8 @@ const CONFIG = {
   DISCORD_TOKEN: process.env.FS25_BOT_DISCORD_TOKEN,
   SERVER_STATS_URL: process.env.FS25_BOT_URL_SERVER_STATS,
   CAREER_SAVEGAME_URL: process.env.FS25_BOT_URL_CAREER_SAVEGAME,
-  UPTIME_FILE: process.env.FS25_BOT_UPTIME_FILE,
-  DB_PATH: process.env.FS25_BOT_DB_PATH,
+  UPTIME_FILE: process.env.FS25_BOT_UPTIME_FILE || "./data/uptime_data.json",
+  DB_PATH: process.env.FS25_BOT_DB_PATH || "./data/fs25_bot.json",
   DAILY_SUMMARY_CHANNEL_ID:
     process.env.FS25_BOT_DAILY_SUMMARY_CHANNEL_ID ||
     process.env.DAILY_SUMMARY_CHANNEL_ID,
@@ -43,13 +43,16 @@ const CONFIG = {
   DISCORD_SERVER_NAME: process.env.FS25_BOT_DISCORD_SERVER_NAME,
   DISCORD_CHANNEL_NAME: process.env.FS25_BOT_DISCORD_CHANNEL_NAME,
   POLL_INTERVAL_MINUTES: Math.max(
-    parseInt(process.env.FS25_BOT_POLL_INTERVAL_MINUTES, 10) || 1,
+    parseInt(process.env.FS25_BOT_POLL_INTERVAL_MINUTES, 10) || 5,
     1
   ),
   UPTIME_UPDATE_INTERVAL: 10 * 60 * 1000, // 10 minutes in milliseconds
   DAILY_STATS_HOUR: parseInt(process.env.FS25_BOT_DAILY_STATS_HOUR, 10) || 17,
   DAILY_STATS_MINUTE:
     parseInt(process.env.FS25_BOT_DAILY_STATS_MINUTE, 10) || 0,
+  DISABLE_SAVEGAME_MESSAGES: process.env.FS25_BOT_DISABLE_SAVEGAME_MESSAGES === "true",
+  DISABLE_UNREACHABLE_FOUND_MESSAGES: process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES === "true",
+  PURGE_ON_STARTUP: process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_ON_STARTUP === "true"
 };
 
 // State variables
@@ -232,7 +235,7 @@ const getUpdateString = (
   }
 
   // Savegame changes
-  if (process.env.FS25_BOT_DISABLE_SAVEGAME_MESSAGES !== "true") {
+  if (!CONFIG.DISABLE_SAVEGAME_MESSAGES) {
     const { money, playTime } = newData.careerSavegame;
     if (previousCareerSavegame.money !== money) {
       let moneyDifferenceSign = "";
@@ -335,7 +338,7 @@ const update = () => {
 
         // Sunucu erişilebilirlik durumu değiştiyse
         if (previouslyUnreachable && data) {
-          if (process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES !== "true") {
+          if (!CONFIG.DISABLE_UNREACHABLE_FOUND_MESSAGES) {
             sendMessage("Server reachable");
           }
           db.server.unreachable = false;
@@ -393,7 +396,7 @@ const update = () => {
       
       // Sunucu erişilemez durumu değiştiyse
       if (!db.server.unreachable) {
-        if (process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES !== "true") {
+        if (!CONFIG.DISABLE_UNREACHABLE_FOUND_MESSAGES) {
           sendMessage("Server unreachable");
         }
         db.server.unreachable = true;
@@ -610,7 +613,7 @@ client.on("ready", () => {
 
   // Setup message purging
   if (willPurge()) {
-    if (process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_ON_STARTUP === "true") {
+    if (CONFIG.PURGE_ON_STARTUP) {
       attemptPurge();
     } else {
       nextPurge = getNextPurge();
