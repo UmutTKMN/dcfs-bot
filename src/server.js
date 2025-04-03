@@ -241,14 +241,14 @@ const getUpdateString = (
       if (money < previousCareerSavegame.money) {
         moneyDifferenceSign = "-";
       }
-      string += `<a:MoneySoaring:1319029763398041772> **Finansal Etkinlik:** *${money.toLocaleString(
+      string += `<a:MoneySoaring:1319029763398041772> **Finans Hareketleri:** *${money.toLocaleString(
         "en-GB"
       )} (${moneyDifferenceSign}${moneyDifferenceAbsolute.toLocaleString(
         "en-GB"
       )}).*\n`;
     }
     if (previousCareerSavegame.playTime !== playTime) {
-      string += `<a:pixel_clock:1319030004411273297> **Zaman Harcanılan:** *${formatMinutes(
+      string += `<a:pixel_clock:1319030004411273297> **Geçirlen Zaman:** *${formatMinutes(
         playTime
       )}*.\n`;
     }
@@ -303,7 +303,7 @@ const sendServerStatusMessage = (status, channelId) => {
 
   if (status === "online") {
     statusEmoji = "<:2171online:1319749534204563466>";
-    statusMessage = "Sunucu şu anda çevrimiçi";
+    statusMessage = "Sunucu çevrimiçi";
   } else if (status === "offline") {
     statusEmoji = "<:1006donotdisturb:1319749525283409971>";
     statusMessage = "Sunucu çevrimdışı";
