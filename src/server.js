@@ -36,8 +36,8 @@ const CONFIG = {
   CAREER_SAVEGAME_URL: process.env.FS25_BOT_URL_CAREER_SAVEGAME,
   UPTIME_FILE: process.env.FS25_BOT_UPTIME_FILE,
   DB_PATH: process.env.FS25_BOT_DB_PATH,
-  DAILY_SUMMARY_CHANNEL_ID: process.env.FS25_BOT_DAILY_SUMMARY_CHANNEL_ID,
-  UPDATE_CHANNEL_ID: process.env.FS25_BOT_UPDATE_CHANNEL_ID,
+  DAILY_SUMMARY_CHANNEL_ID: process.env.FS25_BOT_DAILY_SUMMARY_CHANNEL_ID || process.env.DAILY_SUMMARY_CHANNEL_ID,
+  UPDATE_CHANNEL_ID: process.env.FS25_BOT_UPDATE_CHANNEL_ID || process.env.UPDATE_CHANNEL_ID,
   DISCORD_SERVER_NAME: process.env.FS25_BOT_DISCORD_SERVER_NAME,
   DISCORD_CHANNEL_NAME: process.env.FS25_BOT_DISCORD_CHANNEL_NAME,
   POLL_INTERVAL_MINUTES: Math.max(
@@ -436,6 +436,8 @@ function scheduleDailyMessage(hour, minute, callback) {
   const target = new Date();
 
   target.setHours(hour, minute, 0, 0);
+  
+  // Eğer belirlenen zaman bugün için geçtiyse, yarın için planla
   if (target <= now) {
     target.setDate(target.getDate() + 1);
   }
@@ -443,11 +445,19 @@ function scheduleDailyMessage(hour, minute, callback) {
   const delay = target - now;
   const dayInMillis = 24 * 60 * 60 * 1000;
 
-  console.log(`✅ Günlük istatistikler ${target.toLocaleString()} için planlandı`);
+  console.log(`✅ Günlük istatistikler şu tarih için planlandı: ${target.toLocaleString()}`);
+  console.log(`✅ Şu anki zaman: ${now.toLocaleString()}, ${delay / (1000 * 60)} dakika sonra çalışacak`);
 
   setTimeout(() => {
+    console.log("⏰ Planlanmış görev zamanı geldi! sendUptimeData fonksiyonu çağrılıyor...");
     callback();
-    setInterval(callback, dayInMillis);
+    
+    // İlk çalıştırmadan sonra günlük interval başlat
+    console.log("⏰ Günlük interval başlatılıyor, her 24 saatte bir çalışacak");
+    setInterval(() => {
+      console.log("⏰ 24 saatlik interval tetiklendi, callback çağrılıyor...");
+      callback();
+    }, dayInMillis);
   }, delay);
 }
 
@@ -457,11 +467,15 @@ function scheduleDailyMessage(hour, minute, callback) {
 
 // Format player uptime stats and send as embed
 function sendUptimeData() {
+  console.log("🔍 sendUptimeData fonksiyonu çağrıldı, günlük uptime istatistikleri gönderiliyor...");
+  
   if (!fs.existsSync(CONFIG.UPTIME_FILE)) {
     console.error(`❌ Çalışma süresi dosyası bulunamadı: ${CONFIG.UPTIME_FILE}`);
     return;
   }
 
+  console.log(`🔍 DAILY_SUMMARY_CHANNEL_ID: ${CONFIG.DAILY_SUMMARY_CHANNEL_ID}`);
+  
   fs.readFile(CONFIG.UPTIME_FILE, "utf8", (err, data) => {
     if (err) {
       console.error("❌ Çalışma süresi dosyası okunamadı:", err.message);
@@ -511,7 +525,9 @@ function sendUptimeData() {
       const channel = client.channels.cache.get(
         CONFIG.DAILY_SUMMARY_CHANNEL_ID
       );
+      
       if (channel) {
+        console.log(`✅ Kanal bulundu: ${channel.name}`);
         channel
           .send({ embeds: [embed] })
           .then(() => console.log("✅ Oyuncu istatistikleri mesajı başarıyla gönderildi."))
