@@ -8,6 +8,7 @@ const {
   getDataFromAPI,
   parseData,
   getDefaultDatabase,
+  fixColorCodes,
 } = require('./utils/utils');
 
 /**
@@ -27,6 +28,15 @@ const update = async () => {
     
     // Veriyi çek ve işle
     const rawData = await getDataFromAPI();
+    
+    // Renk kodu düzeltme işlemini uygula
+    if (rawData && rawData.serverData && typeof rawData.serverData === 'string') {
+      rawData.serverData = fixColorCodes(rawData.serverData);
+    }
+    if (rawData && rawData.careerSaveGameData && typeof rawData.careerSaveGameData === 'string') {
+      rawData.careerSaveGameData = fixColorCodes(rawData.careerSaveGameData);
+    }
+    
     const data = parseData(rawData);
     
     if (data) {

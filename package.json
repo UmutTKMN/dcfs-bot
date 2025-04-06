@@ -13,6 +13,7 @@
     "watchdog": "node ./src/watchdog.js",
     "start:watchdog": "node ./src/watchdog.js",
     "start:prod": "NODE_ENV=production node ./src/watchdog.js",
+    "fix-colors": "node ./fixHexColorCodes.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {

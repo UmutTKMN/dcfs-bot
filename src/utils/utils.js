@@ -225,6 +225,21 @@ const utils = {
 
     return string;
   },
+
+  /**
+   * Geçersiz HEX renk kodlarını düzeltir
+   * @param {string} str - Kontrol edilecek metin
+   * @return {string} - Düzeltilmiş metin
+   */
+  fixColorCodes: (str) => {
+    if (!str || typeof str !== 'string') return str;
+    
+    // 5 karakterli HEX renk kodlarını 6 karakterli formata dönüştür (#24a5b -> #24a5b0)
+    return str.replace(/#([0-9a-fA-F]{5})\b/g, (match, p1) => {
+      console.log(`⚠️ Geçersiz renk kodu düzeltiliyor: ${match} -> #${p1}0`);
+      return `#${p1}0`;
+    });
+  },
 };
 
 module.exports = utils;

@@ -25,6 +25,7 @@ const {
   getDataFromAPI,
   parseData,
   getModString,
+  fixColorCodes,
 } = require("./utils/utils");
 const { getNextPurge, willPurge, purgeOldMessages } = require("./utils/purge");
 
@@ -347,65 +348,69 @@ const update = () => {
 
   getDataFromAPI()
     .then((rawData) => {
-      try {
-        const previouslyUnreachable = db.server.unreachable;
-        const previousServer = db.server;
-        const previousMods = db.mods;
-        const previousCareerSavegame = db.careerSavegame;
+      // Renk kodu düzeltme işlemini uygula
+      if (rawData && rawData.serverData && typeof rawData.serverData === 'string') {
+        rawData.serverData = fixColorCodes(rawData.serverData);
+      }
+      if (rawData && rawData.careerSaveGameData && typeof rawData.careerSaveGameData === 'string') {
+        rawData.careerSaveGameData = fixColorCodes(rawData.careerSaveGameData);
+      }
+      
+      const previouslyUnreachable = db.server.unreachable;
+      const previousServer = db.server;
+      const previousMods = db.mods;
+      const previousCareerSavegame = db.careerSavegame;
 
-        const data = parseData(rawData, previousServer);
+      const data = parseData(rawData, previousServer);
 
-        // Sunucu erişilebilirlik durumu değiştiyse
-        if (previouslyUnreachable && data) {
-          if (!CONFIG.DISABLE_UNREACHABLE_FOUND_MESSAGES) {
-            sendMessage("");
-          }
-          db.server.unreachable = false;
-          fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+      // Sunucu erişilebilirlik durumu değiştiyse
+      if (previouslyUnreachable && data) {
+        if (!CONFIG.DISABLE_UNREACHABLE_FOUND_MESSAGES) {
+          sendMessage("");
+        }
+        db.server.unreachable = false;
+        fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+      }
+
+      // Sunucu durumu değiştiyse
+      if (data) {
+        const updateString = getUpdateString(
+          data,
+          previousServer,
+          previousMods,
+          previousCareerSavegame
+        );
+
+        // Sadece değişiklik varsa mesaj gönder
+        if (updateString) {
+          sendMessage(updateString);
         }
 
-        // Sunucu durumu değiştiyse
-        if (data) {
-          const updateString = getUpdateString(
-            data,
-            previousServer,
-            previousMods,
-            previousCareerSavegame
-          );
-
-          // Sadece değişiklik varsa mesaj gönder
-          if (updateString) {
-            sendMessage(updateString);
-          }
-
-          // Sunucu çevrimiçi durumu değiştiyse
-          if (data.server.online !== previousServer.online) {
-            sendServerStatusMessage(data.server.online ? "online" : "offline", CONFIG.UPDATE_CHANNEL_ID);
-          }
-
-          // Veritabanını güncelle
-          db = data;
-          fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
-
-          // Bot durumunu güncelle
-          client.user.setActivity("Farming Simulator 25");
-          client.user.setStatus("online");
-        } else {
-          // Sunucu çevrimdışı durumu değiştiyse
-          if (previousServer.online) {
-            sendServerStatusMessage("offline", CONFIG.UPDATE_CHANNEL_ID);
-          }
-
-          db.server.online = false;
-          db.server.unreachable = false;
-          fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
-
-          // Bot durumunu güncelle
-          client.user.setActivity("Sunucu erişilemez", { type: "WATCHING" });
-          client.user.setStatus("dnd");
+        // Sunucu çevrimiçi durumu değiştiyse
+        if (data.server.online !== previousServer.online) {
+          sendServerStatusMessage(data.server.online ? "online" : "offline", CONFIG.UPDATE_CHANNEL_ID);
         }
-      } catch (e) {
-        console.error("❌ Sunucu verisi işlenirken hata:", e.message);
+
+        // Veritabanını güncelle
+        db = data;
+        fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+
+        // Bot durumunu güncelle
+        client.user.setActivity("Farming Simulator 25");
+        client.user.setStatus("online");
+      } else {
+        // Sunucu çevrimdışı durumu değiştiyse
+        if (previousServer.online) {
+          sendServerStatusMessage("offline", CONFIG.UPDATE_CHANNEL_ID);
+        }
+
+        db.server.online = false;
+        db.server.unreachable = false;
+        fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+
+        // Bot durumunu güncelle
+        client.user.setActivity("Sunucu erişilemez", { type: "WATCHING" });
+        client.user.setStatus("dnd");
       }
     })
     .catch((e) => {
