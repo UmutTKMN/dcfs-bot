@@ -50,7 +50,9 @@ const CONFIG = {
     parseInt(process.env.FS25_BOT_DAILY_STATS_MINUTE, 10) || 0,
   DISABLE_SAVEGAME_MESSAGES: process.env.FS25_BOT_DISABLE_SAVEGAME_MESSAGES === "true",
   DISABLE_UNREACHABLE_FOUND_MESSAGES: process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES === "true",
-  PURGE_ON_STARTUP: process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_ON_STARTUP === "true"
+  PURGE_ON_STARTUP: process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_ON_STARTUP === "true",
+  RATE_LIMIT_REQUESTS: parseInt(process.env.FS25_BOT_RATE_LIMIT_REQUESTS, 10) || 100,
+  RATE_LIMIT_WINDOW: parseInt(process.env.FS25_BOT_RATE_LIMIT_WINDOW, 10) || 60000
 };
 
 // State variables
@@ -74,6 +76,96 @@ const client = new Client({
     GatewayIntentBits.GuildVoiceStates,
   ],
 });
+
+// Rate limiting için yeni değişkenler
+const requestTimestamps = new Map();
+const blockedIPs = new Map();
+const BLOCK_DURATION = 3600000; // 1 saat
+
+// Çevre değişkenlerinin doğrulaması
+function validateConfig() {
+  const requiredVars = [
+    'DISCORD_TOKEN',
+    'SERVER_STATS_URL',
+    'CAREER_SAVEGAME_URL',
+    'DB_PATH'
+  ];
+
+  for (const varName of requiredVars) {
+    if (!CONFIG[varName]) {
+      throw new Error(`Gerekli çevre değişkeni eksik: ${varName}`);
+    }
+  }
+
+  // URL doğrulaması
+  try {
+    new URL(CONFIG.SERVER_STATS_URL);
+    new URL(CONFIG.CAREER_SAVEGAME_URL);
+  } catch (e) {
+    throw new Error('Geçersiz URL formatı');
+  }
+}
+
+// Rate limiting kontrolü
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const timestamps = requestTimestamps.get(ip) || [];
+  const windowStart = now - CONFIG.RATE_LIMIT_WINDOW;
+
+  // Eski istekleri temizle
+  const validTimestamps = timestamps.filter(timestamp => timestamp > windowStart);
+  requestTimestamps.set(ip, validTimestamps);
+
+  // Engellenmiş IP kontrolü
+  if (blockedIPs.has(ip)) {
+    const blockEnd = blockedIPs.get(ip);
+    if (now < blockEnd) {
+      return false;
+    }
+    blockedIPs.delete(ip);
+  }
+
+  // Rate limit kontrolü
+  if (validTimestamps.length >= CONFIG.RATE_LIMIT_REQUESTS) {
+    blockedIPs.set(ip, now + BLOCK_DURATION);
+    return false;
+  }
+
+  validTimestamps.push(now);
+  return true;
+}
+
+class ServerManager {
+  constructor(config) {
+    this.config = config;
+    this.db = getDefaultDatabase();
+    this.lastUptimeUpdateTime = Date.now();
+  }
+
+  async fetchUptimeData() {
+    try {
+      const response = await axios.get(this.config.SERVER_STATS_URL);
+      const data = await xml2js.parseStringPromise(response.data, {
+        explicitArray: false,
+      });
+      return this.processServerData(data);
+    } catch (error) {
+      console.error('Sunucu verisi alınamadı:', error);
+      return null;
+    }
+  }
+
+  processServerData(data) {
+    const serverName = data.Server.$.name || "Bilinmeyen Sunucu";
+    const playersData = data.Server.Slots.Player;
+    const players = Array.isArray(playersData) ? playersData : [playersData];
+    
+    return {
+      serverName,
+      players: players.filter(player => player.$ && player.$.isUsed === "true")
+    };
+  }
+}
 
 /**
  * PLAYER UPTIME TRACKING FUNCTIONS
@@ -609,43 +701,6 @@ client.on("reconnecting", () => {
   console.log("⏳ Discord istemcisi yeniden bağlanıyor...");
 });
 
-// Update the initialization code
-const init = async () => {
-  try {
-    // Check for database directory
-    const dbDir = path.dirname(CONFIG.DB_PATH);
-    if (!fs.existsSync(dbDir)) {
-      try {
-        fs.mkdirSync(dbDir, { recursive: true });
-        console.log(`✅ Dizin oluşturuldu: ${dbDir}`);
-      } catch (error) {
-        console.error(`❌ ${dbDir} dizini oluşturulamadı:`, error.message);
-      }
-    }
-
-    // Read database
-    try {
-      if (fs.existsSync(CONFIG.DB_PATH)) {
-        const dbContent = fs.readFileSync(CONFIG.DB_PATH, 'utf8');
-        db = JSON.parse(dbContent);
-        console.log('✅ Veritabanı yüklendi');
-      }
-    } catch (e) {
-      console.error(`❌ Veritabanı okunamadı: ${CONFIG.DB_PATH}`, e.message);
-      db = getDefaultDatabase();
-    }
-
-    // Setup Discord client with reconnection support
-    const connected = await setupDiscordClient();
-    if (!connected) {
-      handleReconnection();
-    }
-  } catch (error) {
-    console.error("❌ Başlatma hatası:", error.message);
-    handleReconnection();
-  }
-};
-
 // Discord ready event
 client.on("ready", () => {
   console.log(`✅ Bot ${client.user.tag} olarak çalışıyor!`);
@@ -742,5 +797,93 @@ onExit(() => {
   client.destroy();
 });
 
-// Start the initialization process
-init();
+class DiscordManager {
+  constructor(config) {
+    this.config = config;
+    this.client = new Client({
+      intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildVoiceStates,
+      ],
+    });
+    this.setupEventHandlers();
+  }
+
+  setupEventHandlers() {
+    this.client.on('ready', () => {
+      console.log(`Bot ${this.client.user.tag} olarak giriş yaptı!`);
+    });
+
+    this.client.on('error', (error) => {
+      console.error('Discord bağlantı hatası:', error);
+    });
+  }
+
+  async sendMessage(channelId, message) {
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (channel) {
+        await channel.send(message);
+      }
+    } catch (error) {
+      console.error('Mesaj gönderilemedi:', error);
+    }
+  }
+}
+
+class FS25Bot {
+  constructor(config) {
+    this.config = config;
+    this.serverManager = new ServerManager(config);
+    this.discordManager = new DiscordManager(config);
+    this.validateConfig();
+  }
+
+  async start() {
+    try {
+      await this.discordManager.client.login(this.config.DISCORD_TOKEN);
+      this.startHeartbeat();
+      this.scheduleDailyMessage();
+    } catch (error) {
+      console.error('Bot başlatılamadı:', error);
+      process.exit(1);
+    }
+  }
+
+  startHeartbeat() {
+    setInterval(() => {
+      this.update();
+    }, this.config.POLL_INTERVAL_MINUTES * 60 * 1000);
+  }
+
+  scheduleDailyMessage() {
+    const now = new Date();
+    const targetTime = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      this.config.DAILY_STATS_HOUR,
+      this.config.DAILY_STATS_MINUTE,
+      0
+    );
+
+    if (now > targetTime) {
+      targetTime.setDate(targetTime.getDate() + 1);
+    }
+
+    const delay = targetTime.getTime() - now.getTime();
+    setTimeout(() => {
+      this.sendUptimeData();
+      this.scheduleDailyMessage();
+    }, delay);
+  }
+}
+
+// Yeni başlatma kodu
+const bot = new FS25Bot(CONFIG);
+bot.start().catch(error => {
+  console.error('Bot başlatılamadı:', error);
+  process.exit(1);
+});
