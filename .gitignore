@@ -1,8 +1,10 @@
+.vscode
+
 .env
 logs
 data
 node_modules
 
 package-lock.json
-
+.gitignore
 update.txt
