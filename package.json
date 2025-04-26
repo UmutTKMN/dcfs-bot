@@ -1,39 +1,31 @@
 {
   "name": "dcfs-bot",
-  "version": "1.0.0",
-  "description": "Farming Simulator 25 Discord Botu",
-  "main": "src/server.js",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/server.js",
+  "bin": {
+    "discord-bot": "./src/server.js"
+  },
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
+    "start": "node ./src/server.js",
+    "update": "node ./src/update.js",
+    "dev": "node ./src/server.js -e js",
+    "watchdog": "node ./src/watchdog.js",
+    "start:watchdog": "node ./src/watchdog.js",
+    "start:prod": "NODE_ENV=production node ./src/watchdog.js",
+    "fix-colors": "node ./fixHexColorCodes.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/yourusername/dcfs-bot.git"
-  },
-  "keywords": [
-    "discord",
-    "bot",
-    "farming-simulator",
-    "fs25"
-  ],
-  "author": "",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/yourusername/dcfs-bot/issues"
-  },
-  "homepage": "https://github.com/yourusername/dcfs-bot#readme",
   "dependencies": {
-    "axios": "^1.6.2",
+    "axios": "^1.8.4",
     "deepmerge": "^4.3.1",
-    "discord.js": "^14.13.0",
-    "dotenv-flow": "^3.2.0",
+    "discord.js": "^14.18.0",
+    "dotenv-flow": "^4.0.1",
+    "fetch-retry": "^6.0.0",
     "lodash": "^4.17.21",
-    "signal-exit": "^3.0.7",
+    "npm-check": "^6.0.1",
+    "signal-exit": "^4.1.0",
+    "xml-js": "^1.6.11",
     "xml2js": "^0.6.2"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
   }
 }

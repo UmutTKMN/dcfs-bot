@@ -5,9 +5,6 @@ if (process.env.FS25_BOT_DISABLE_CERTIFICATE_VERIFICATION === "true") {
 const _ = require("lodash");
 const convert = require("xml-js");
 const fetch = require("fetch-retry")(global.fetch);
-const axios = require("axios");
-const fs = require("fs");
-const xml2js = require("xml2js");
 
 const ConfigUtils = {
   getNumber: (envVar, defaultValue = 0, minValue = null) => {
@@ -49,173 +46,199 @@ const utils = {
   getTimestamp: () => `<t:${Math.floor(new Date().getTime() / 1000)}>`,
 
   formatMinutes: (minutes) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours}s ${mins}dk`;
-  },
+    const remainingDays = Math.floor(minutes / 1440);
+    const remainingHours = Math.floor((minutes % 1440) / 60);
+    const remainingMinutes = minutes % 60;
 
-  getDataFromAPI: async (serverStatsUrl, careerSavegameUrl) => {
-    try {
-      // Get server data
-      const serverPromise = axios.get(serverStatsUrl);
-      // Get career savegame data
-      const careerPromise = axios.get(careerSavegameUrl);
-
-      // Wait for both promises
-      const [serverRes, careerRes] = await Promise.all([
-        serverPromise,
-        careerPromise,
-      ]);
-
-      return {
-        serverData: serverRes.data,
-        careerSaveGameData: careerRes.data,
-      };
-    } catch (error) {
-      console.error("❌ Sunucu verisi alınırken hata:", error.message);
-      throw error;
+    let string = "";
+    if (remainingDays > 0) {
+      string += `${remainingDays} gün `;
     }
+    if (remainingDays > 0 || remainingHours > 0) {
+      string += `${remainingHours} saat `;
+    }
+    return `${string}${remainingMinutes} dakika`;
   },
 
-  parseData: (data, previousServer) => {
-    if (!data) {
+  getDataFromAPI: () =>
+    Promise.all([
+      fetch(process.env.FS25_BOT_URL_SERVER_STATS, {
+        retries,
+        retryDelay,
+        body: null,
+        method: "GET",
+      }),
+      fetch(process.env.FS25_BOT_URL_CAREER_SAVEGAME, {
+        retries,
+        retryDelay,
+        body: null,
+        method: "GET",
+      }),
+    ])
+      .then(([serverStatsResponse, careerSavegameResponse]) =>
+        Promise.all([serverStatsResponse.text(), careerSavegameResponse.text()])
+      )
+      .then(([serverStatsXml, careerSavegameXml]) => ({
+        serverStats: JSON.parse(
+          convert.xml2json(serverStatsXml, { compact: true })
+        ),
+        careerSavegame: JSON.parse(
+          convert.xml2json(careerSavegameXml, { compact: true })
+        ),
+      })),
+
+  parseData: ({ serverStats, careerSavegame: savegame }, previousServer) => {
+    if (!serverStats || !serverStats?.Server?._attributes || !savegame) {
       return null;
     }
 
-    try {
-      let serverData;
-      let parsedServer = {};
+    const server = {
+      game: serverStats.Server._attributes.game || previousServer.game,
+      version: serverStats.Server._attributes.version || previousServer.version,
+      name: serverStats.Server._attributes.name || previousServer.name,
+      mapName: serverStats.Server._attributes.mapName || previousServer.mapName,
+      online: true,
+      unreachable: false,
+    };
 
-      // Parse server data
-      if (data.serverData) {
-        try {
-          serverData = xml2js.parseStringSync(data.serverData, {
-            explicitArray: false,
-          });
-          
-          // Basic server info
-          parsedServer = {
-            name:
-              (serverData.Server && serverData.Server.$.name) ||
-              previousServer.name,
-            mapName:
-              (serverData.Server && serverData.Server.$.mapName) ||
-              previousServer.mapName,
-            game:
-              (serverData.Server && serverData.Server.$.gameName) ||
-              previousServer.game,
-            version:
-              (serverData.Server && serverData.Server.$.version) ||
-              previousServer.version,
-            online: true,
-            unreachable: false,
-          };
+    let mods = {};
+    if (serverStats.Server?.Mods?.Mod !== undefined) {
+      mods = (
+        Array.isArray(serverStats.Server.Mods.Mod)
+          ? serverStats.Server.Mods.Mod
+          : [serverStats.Server.Mods.Mod]
+      )
+        .map((mod) => ({
+          hash: mod._attributes.hash,
+          text: mod._text,
+          name: mod._attributes.name,
+          version: mod._attributes.version,
+          author: mod._attributes.author,
+        }))
+        .reduce((obj, item) => Object.assign(obj, { [item.hash]: item }), {});
+    }
 
-          // Parse mods
-          let mods = {};
-          if (serverData.Server && serverData.Server.Mods && serverData.Server.Mods.Mod) {
-            // Handle single mod vs array of mods
-            const modsArr = Array.isArray(serverData.Server.Mods.Mod)
-              ? serverData.Server.Mods.Mod
-              : [serverData.Server.Mods.Mod];
+    const careerSavegame = {
+      money: parseInt(savegame.careerSavegame.statistics.money._text || 0, 10),
+      playTime: parseInt(
+        savegame.careerSavegame.statistics.playTime._text || 0,
+        10
+      ),
+    };
 
-            modsArr.forEach((mod) => {
-              mods[mod.$.name] = {
-                name: mod.$.name,
-                title: mod.$.title,
-                version: mod.$.version,
-              };
-            });
+    return {
+      server,
+      mods,
+      careerSavegame,
+    };
+  },
+
+  getModString(newData, previousMods, dlc) {
+    const characterLimit = dlc ? 300 : 1200;
+    const modType = dlc ? "DLC" : "mod";
+    const emoji = dlc ? ":cd:" : ":joystick:";
+
+    const filteredNew = Object.fromEntries(
+      Object.entries(newData.mods).filter(([, { name: modName }]) =>
+        dlc ? modName.startsWith("pdlc_") : !modName.startsWith("pdlc_")
+      )
+    );
+    const filteredPrevious = Object.fromEntries(
+      Object.entries(previousMods).filter(([, { name: modName }]) =>
+        dlc ? modName.startsWith("pdlc_") : !modName.startsWith("pdlc_")
+      )
+    );
+
+    let string = "";
+
+    const newMods = [];
+    const updatedMods = [];
+    Object.values(filteredNew)
+      .sort((modA, modB) =>
+        modA.text.toLowerCase().localeCompare(modB.text.toLowerCase())
+      )
+      .forEach((mod) => {
+        if (!Object.prototype.hasOwnProperty.call(filteredPrevious, mod.hash)) {
+          if (
+            Object.values(filteredPrevious)
+              .map(({ name: modName }) => modName)
+              .includes(mod.name)
+          ) {
+            updatedMods.push(mod);
+          } else {
+            newMods.push(mod);
           }
+        }
+      });
 
-          // Parse career savegame data
-          let careerSavegame = {
-            money: 0,
-            playTime: 0,
-          };
-
-          if (data.careerSaveGameData) {
-            try {
-              const careerData = xml2js.parseStringSync(data.careerSaveGameData, {
-                explicitArray: false,
-              });
-              if (careerData.CareerSavegame) {
-                careerSavegame = {
-                  money: parseInt(careerData.CareerSavegame.$.money || "0", 10),
-                  playTime: parseInt(careerData.CareerSavegame.$.playTime || "0", 10),
-                };
-              }
-            } catch (e) {
-              console.error("❌ Kariyer verisi ayrıştırma hatası:", e.message);
-            }
+    const removedMods = [];
+    Object.values(filteredPrevious)
+      .sort((modA, modB) =>
+        modA.text.toLowerCase().localeCompare(modB.text.toLowerCase())
+      )
+      .forEach((mod) => {
+        if (!Object.prototype.hasOwnProperty.call(filteredNew, mod.hash)) {
+          if (
+            !Object.values(updatedMods)
+              .map(({ name: modName }) => modName)
+              .includes(mod.name)
+          ) {
+            removedMods.push(mod);
           }
+        }
+      });
 
-          return {
-            server: parsedServer,
-            mods: mods,
-            careerSavegame: careerSavegame,
-          };
-        } catch (e) {
-          console.error("❌ Sunucu verisi ayrıştırma hatası:", e.message);
-          return null;
+    let tempModsString = "";
+    if (newMods.length > 0) {
+      tempModsString += `${emoji} Sunucuya **${newMods.length}** ${modType} yüklendi; \n`;
+      newMods.forEach(({ text, version: modVersion, author }) => {
+        tempModsString += `- **${text} ${modVersion}** by ${author}\n`;
+      });
+    }
+
+    if (updatedMods.length > 0) {
+      tempModsString += `${emoji} Sunucuda **${updatedMods.length}** ${modType} güncellendi; \n`;
+      updatedMods.forEach(({ text, version: modVersion, author }) => {
+        tempModsString += `- **${text} ${modVersion}** by ${author}\n`;
+      });
+    }
+
+    if (removedMods.length > 0) {
+      tempModsString += `${emoji} Sunucudan **${removedMods.length}** ${modType} kaldırıldı; \n`;
+      removedMods.forEach(({ text, version: modVersion, author }) => {
+        tempModsString += `- **${text} ${modVersion}** by ${author}\n`;
+      });
+    }
+
+    if (tempModsString.length > 0) {
+      if (tempModsString.length <= characterLimit) {
+        string += tempModsString;
+      } else {
+        if (updatedMods.length > 0) {
+          string += `Sunucuda **${updatedMods.length}** ${modType} güncellendi.\n`;
+        }
+        if (removedMods.length > 0) {
+          string += `Sunucudan **${removedMods.length}** ${modType} kaldırıldı.\n`;
         }
       }
-    } catch (e) {
-      console.error("❌ Veri ayrıştırma hatası:", e.message);
-      return null;
     }
 
-    return null;
-  },
-
-  getModString: (newData, previousMods, isDlc) => {
-    let modString = "";
-    const newMods = newData.mods;
-    
-    // Select the right type of mods based on isDlc
-    const isCorrectModType = (modName) => 
-      isDlc ? modName.startsWith("pdlc_") : !modName.startsWith("pdlc_");
-    
-    // Find added mods
-    const addedMods = Object.values(newMods).filter(
-      ({ name: modName }) => 
-        isCorrectModType(modName) && !previousMods[modName]
-    );
-    
-    // Find removed mods
-    const removedMods = Object.values(previousMods).filter(
-      ({ name: modName }) => 
-        isCorrectModType(modName) && !newMods[modName]
-    );
-    
-    // Generate message for added mods
-    if (addedMods.length > 0) {
-      modString += `**Eklenen ${isDlc ? "DLC" : "Mod"}${addedMods.length > 1 ? "'ler" : ""}:**\n`;
-      addedMods.forEach(({ title }) => {
-        modString += `➕ ${title}\n`;
-      });
-    }
-    
-    // Generate message for removed mods
-    if (removedMods.length > 0) {
-      modString += `**Kaldırılan ${isDlc ? "DLC" : "Mod"}${removedMods.length > 1 ? "'ler" : ""}:**\n`;
-      removedMods.forEach(({ title }) => {
-        modString += `➖ ${title}\n`;
-      });
-    }
-    
-    return modString;
+    return string;
   },
 
   /**
-   * XML içindeki renk kodlarını düzeltir
-   * @param {string} xmlString - XML içeriği
-   * @returns {string} - Düzeltilmiş XML içeriği
+   * Geçersiz HEX renk kodlarını düzeltir
+   * @param {string} str - Kontrol edilecek metin
+   * @return {string} - Düzeltilmiş metin
    */
-  fixColorCodes: (xmlString) => {
-    if (!xmlString) return xmlString;
-    // Fix color codes in XML to prevent parsing errors
-    return xmlString.replace(/&([^;]+);/g, "&amp;$1;");
+  fixColorCodes: (str) => {
+    if (!str || typeof str !== 'string') return str;
+    
+    // 5 karakterli HEX renk kodlarını 6 karakterli formata dönüştür (#24a5b -> #24a5b0)
+    return str.replace(/#([0-9a-fA-F]{5})\b/g, (match, p1) => {
+      console.log(`⚠️ Geçersiz renk kodu düzeltiliyor: ${match} -> #${p1}0`);
+      return `#${p1}0`;
+    });
   },
 };
 
