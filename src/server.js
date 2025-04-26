@@ -782,6 +782,9 @@ class DiscordManager {
 
 class FS25Bot {
   constructor(config) {
+    if (!config) {
+      throw new Error('Yapılandırma parametresi gerekli');
+    }
     this.config = config;
     this.serverManager = new ServerManager(config);
     this.discordManager = new DiscordManager(config);
@@ -789,6 +792,10 @@ class FS25Bot {
   }
 
   validateConfig() {
+    if (!this.config) {
+      throw new Error('Yapılandırma bulunamadı');
+    }
+
     const requiredConfigs = {
       'DISCORD_TOKEN': this.config.DISCORD_TOKEN,
       'URL_SERVER_STATS': this.config.SERVER_STATS_URL,
@@ -804,7 +811,6 @@ class FS25Bot {
       throw new Error(`Eksik yapılandırma değerleri: ${missingConfigs.join(', ')}`);
     }
 
-    // URL formatı kontrolü
     try {
       new URL(this.config.SERVER_STATS_URL);
       new URL(this.config.CAREER_SAVEGAME_URL);
@@ -812,7 +818,6 @@ class FS25Bot {
       throw new Error('Geçersiz sunucu URL formatı');
     }
 
-    // Sayısal değerlerin kontrolü
     if (this.config.POLL_INTERVAL_MINUTES < 1) {
       throw new Error('POLL_INTERVAL_MINUTES en az 1 olmalıdır');
     }
