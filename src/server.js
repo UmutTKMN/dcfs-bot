@@ -36,8 +36,8 @@ const CONFIG = {
   CAREER_SAVEGAME_URL: process.env.FS25_BOT_URL_CAREER_SAVEGAME,
   UPTIME_FILE: process.env.FS25_BOT_UPTIME_FILE,
   DB_PATH: process.env.FS25_BOT_DB_PATH,
-  DAILY_SUMMARY_CHANNEL_ID: process.env.FS25_BOT_DAILY_SUMMARY_CHANNEL_ID || process.env.DAILY_SUMMARY_CHANNEL_ID,
-  UPDATE_CHANNEL_ID: process.env.FS25_BOT_UPDATE_CHANNEL_ID || process.env.UPDATE_CHANNEL_ID,
+  DAILY_SUMMARY_CHANNEL_ID: process.env.FS25_BOT_DAILY_SUMMARY_CHANNEL_ID,
+  UPDATE_CHANNEL_ID: process.env.FS25_BOT_UPDATE_CHANNEL_ID,
   DISCORD_SERVER_NAME: process.env.FS25_BOT_DISCORD_SERVER_NAME,
   DISCORD_CHANNEL_NAME: process.env.FS25_BOT_DISCORD_CHANNEL_NAME,
   POLL_INTERVAL_MINUTES: Math.max(
@@ -48,11 +48,12 @@ const CONFIG = {
   DAILY_STATS_HOUR: parseInt(process.env.FS25_BOT_DAILY_STATS_HOUR, 10) || 17,
   DAILY_STATS_MINUTE:
     parseInt(process.env.FS25_BOT_DAILY_STATS_MINUTE, 10) || 0,
-  DISABLE_SAVEGAME_MESSAGES: process.env.FS25_BOT_DISABLE_SAVEGAME_MESSAGES === "true",
-  DISABLE_UNREACHABLE_FOUND_MESSAGES: process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES === "true",
-  PURGE_ON_STARTUP: process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_ON_STARTUP === "true",
-  RATE_LIMIT_REQUESTS: parseInt(process.env.FS25_BOT_RATE_LIMIT_REQUESTS, 10) || 100,
-  RATE_LIMIT_WINDOW: parseInt(process.env.FS25_BOT_RATE_LIMIT_WINDOW, 10) || 60000
+  DISABLE_SAVEGAME_MESSAGES:
+    process.env.FS25_BOT_DISABLE_SAVEGAME_MESSAGES === "true",
+  DISABLE_UNREACHABLE_FOUND_MESSAGES:
+    process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES === "true",
+  PURGE_ON_STARTUP:
+    process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_ON_STARTUP === "true",
 };
 
 // State variables
@@ -76,43 +77,6 @@ const client = new Client({
     GatewayIntentBits.GuildVoiceStates,
   ],
 });
-
-// Rate limiting için yeni değişkenler
-const requestTimestamps = new Map();
-const blockedIPs = new Map();
-const BLOCK_DURATION = 3600000; // 1 saat
-
-class ServerManager {
-  constructor(config) {
-    this.config = config;
-    this.db = getDefaultDatabase();
-    this.lastUptimeUpdateTime = Date.now();
-  }
-
-  async fetchUptimeData() {
-    try {
-      const response = await axios.get(this.config.SERVER_STATS_URL);
-      const data = await xml2js.parseStringPromise(response.data, {
-        explicitArray: false,
-      });
-      return this.processServerData(data);
-    } catch (error) {
-      console.error('Sunucu verisi alınamadı:', error);
-      return null;
-    }
-  }
-
-  processServerData(data) {
-    const serverName = data.Server.$.name || "Bilinmeyen Sunucu";
-    const playersData = data.Server.Slots.Player;
-    const players = Array.isArray(playersData) ? playersData : [playersData];
-    
-    return {
-      serverName,
-      players: players.filter(player => player.$ && player.$.isUsed === "true")
-    };
-  }
-}
 
 /**
  * PLAYER UPTIME TRACKING FUNCTIONS
@@ -214,7 +178,10 @@ async function updateUptimeData() {
     );
     console.log("✅ Oyuncu çalışma süresi verileri başarıyla güncellendi.");
   } catch (error) {
-    console.error("❌ Çalışma süresi dosyası güncellenirken hata:", error.message);
+    console.error(
+      "❌ Çalışma süresi dosyası güncellenirken hata:",
+      error.message
+    );
   }
 }
 
@@ -388,13 +355,21 @@ const update = () => {
   getDataFromAPI()
     .then((rawData) => {
       // Renk kodu düzeltme işlemini uygula
-      if (rawData && rawData.serverData && typeof rawData.serverData === 'string') {
+      if (
+        rawData &&
+        rawData.serverData &&
+        typeof rawData.serverData === "string"
+      ) {
         rawData.serverData = fixColorCodes(rawData.serverData);
       }
-      if (rawData && rawData.careerSaveGameData && typeof rawData.careerSaveGameData === 'string') {
+      if (
+        rawData &&
+        rawData.careerSaveGameData &&
+        typeof rawData.careerSaveGameData === "string"
+      ) {
         rawData.careerSaveGameData = fixColorCodes(rawData.careerSaveGameData);
       }
-      
+
       const previouslyUnreachable = db.server.unreachable;
       const previousServer = db.server;
       const previousMods = db.mods;
@@ -427,7 +402,10 @@ const update = () => {
 
         // Sunucu çevrimiçi durumu değiştiyse
         if (data.server.online !== previousServer.online) {
-          sendServerStatusMessage(data.server.online ? "online" : "offline", CONFIG.UPDATE_CHANNEL_ID);
+          sendServerStatusMessage(
+            data.server.online ? "online" : "offline",
+            CONFIG.UPDATE_CHANNEL_ID
+          );
         }
 
         // Veritabanını güncelle
@@ -475,8 +453,6 @@ function scheduleDailyMessage(hour, minute, callback) {
   const target = new Date();
 
   target.setHours(hour, minute, 0, 0);
-  
-  // Eğer belirlenen zaman bugün için geçtiyse, yarın için planla
   if (target <= now) {
     target.setDate(target.getDate() + 1);
   }
@@ -484,19 +460,13 @@ function scheduleDailyMessage(hour, minute, callback) {
   const delay = target - now;
   const dayInMillis = 24 * 60 * 60 * 1000;
 
-  console.log(`✅ Günlük istatistikler şu tarih için planlandı: ${target.toLocaleString()}`);
-  console.log(`✅ Şu anki zaman: ${now.toLocaleString()}, ${delay / (1000 * 60)} dakika sonra çalışacak`);
+  console.log(
+    `✅ Günlük istatistikler ${target.toLocaleString()} için planlandı`
+  );
 
   setTimeout(() => {
-    console.log("⏰ Planlanmış görev zamanı geldi! sendUptimeData fonksiyonu çağrılıyor...");
     callback();
-    
-    // İlk çalıştırmadan sonra günlük interval başlat
-    console.log("⏰ Günlük interval başlatılıyor, her 24 saatte bir çalışacak");
-    setInterval(() => {
-      console.log("⏰ 24 saatlik interval tetiklendi, callback çağrılıyor...");
-      callback();
-    }, dayInMillis);
+    setInterval(callback, dayInMillis);
   }, delay);
 }
 
@@ -506,15 +476,13 @@ function scheduleDailyMessage(hour, minute, callback) {
 
 // Format player uptime stats and send as embed
 function sendUptimeData() {
-  console.log("🔍 sendUptimeData fonksiyonu çağrıldı, günlük uptime istatistikleri gönderiliyor...");
-  
   if (!fs.existsSync(CONFIG.UPTIME_FILE)) {
-    console.error(`❌ Çalışma süresi dosyası bulunamadı: ${CONFIG.UPTIME_FILE}`);
+    console.error(
+      `❌ Çalışma süresi dosyası bulunamadı: ${CONFIG.UPTIME_FILE}`
+    );
     return;
   }
 
-  console.log(`🔍 DAILY_SUMMARY_CHANNEL_ID: ${CONFIG.DAILY_SUMMARY_CHANNEL_ID}`);
-  
   fs.readFile(CONFIG.UPTIME_FILE, "utf8", (err, data) => {
     if (err) {
       console.error("❌ Çalışma süresi dosyası okunamadı:", err.message);
@@ -564,14 +532,17 @@ function sendUptimeData() {
       const channel = client.channels.cache.get(
         CONFIG.DAILY_SUMMARY_CHANNEL_ID
       );
-      
       if (channel) {
-        console.log(`✅ Kanal bulundu: ${channel.name}`);
         channel
           .send({ embeds: [embed] })
-          .then(() => console.log("✅ Oyuncu istatistikleri mesajı başarıyla gönderildi."))
+          .then(() =>
+            console.log("✅ Oyuncu istatistikleri mesajı başarıyla gönderildi.")
+          )
           .catch((error) =>
-            console.error("❌ Oyuncu istatistikleri gönderilirken hata:", error.message)
+            console.error(
+              "❌ Oyuncu istatistikleri gönderilirken hata:",
+              error.message
+            )
           );
       } else {
         console.error(
@@ -592,7 +563,7 @@ function sendUptimeData() {
 // Setup and connect the Discord client with retry logic
 const setupDiscordClient = async () => {
   try {
-    console.log('Discord istemcisi ayarlanıyor...');
+    console.log("Discord istemcisi ayarlanıyor...");
 
     // Login to Discord
     await client.login(CONFIG.DISCORD_TOKEN);
@@ -617,7 +588,11 @@ const handleReconnection = async () => {
 
   if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
     reconnectAttempts++;
-    console.log(`Yeniden bağlanmaya çalışılıyor (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}), ${RECONNECT_DELAY / 1000} saniye içinde...`);
+    console.log(
+      `Yeniden bağlanmaya çalışılıyor (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}), ${
+        RECONNECT_DELAY / 1000
+      } saniye içinde...`
+    );
 
     setTimeout(async () => {
       const success = await setupDiscordClient();
@@ -626,7 +601,9 @@ const handleReconnection = async () => {
       }
     }, RECONNECT_DELAY);
   } else {
-    console.error(`❌ Maksimum yeniden bağlanma denemesi (${MAX_RECONNECT_ATTEMPTS}) aşıldı. Lütfen bağlantınızı kontrol edin ve botu manuel olarak yeniden başlatın.`);
+    console.error(
+      `❌ Maksimum yeniden bağlanma denemesi (${MAX_RECONNECT_ATTEMPTS}) aşıldı. Lütfen bağlantınızı kontrol edin ve botu manuel olarak yeniden başlatın.`
+    );
     isReconnecting = false;
   }
 };
@@ -639,7 +616,9 @@ client.on("error", (error) => {
 
 // Add disconnect handler
 client.on("disconnect", (event) => {
-  console.error(`❌ Discord istemcisi ${event.code} koduyla bağlantısı kesildi. Sebep: ${event.reason}`);
+  console.error(
+    `❌ Discord istemcisi ${event.code} koduyla bağlantısı kesildi. Sebep: ${event.reason}`
+  );
   handleReconnection();
 });
 
@@ -647,6 +626,43 @@ client.on("disconnect", (event) => {
 client.on("reconnecting", () => {
   console.log("⏳ Discord istemcisi yeniden bağlanıyor...");
 });
+
+// Update the initialization code
+const init = async () => {
+  try {
+    // Check for database directory
+    const dbDir = path.dirname(CONFIG.DB_PATH);
+    if (!fs.existsSync(dbDir)) {
+      try {
+        fs.mkdirSync(dbDir, { recursive: true });
+        console.log(`✅ Dizin oluşturuldu: ${dbDir}`);
+      } catch (error) {
+        console.error(`❌ ${dbDir} dizini oluşturulamadı:`, error.message);
+      }
+    }
+
+    // Read database
+    try {
+      if (fs.existsSync(CONFIG.DB_PATH)) {
+        const dbContent = fs.readFileSync(CONFIG.DB_PATH, "utf8");
+        db = JSON.parse(dbContent);
+        console.log("✅ Veritabanı yüklendi");
+      }
+    } catch (e) {
+      console.error(`❌ Veritabanı okunamadı: ${CONFIG.DB_PATH}`, e.message);
+      db = getDefaultDatabase();
+    }
+
+    // Setup Discord client with reconnection support
+    const connected = await setupDiscordClient();
+    if (!connected) {
+      handleReconnection();
+    }
+  } catch (error) {
+    console.error("❌ Başlatma hatası:", error.message);
+    handleReconnection();
+  }
+};
 
 // Discord ready event
 client.on("ready", () => {
@@ -658,7 +674,9 @@ client.on("ready", () => {
       attemptPurge();
     } else {
       nextPurge = getNextPurge();
-      console.log(`✅ İlk temizleme ${new Date(nextPurge)} tarihinde planlandı`);
+      console.log(
+        `✅ İlk temizleme ${new Date(nextPurge)} tarihinde planlandı`
+      );
     }
   }
 
@@ -705,9 +723,11 @@ process.on("uncaughtException", (error) => {
   console.error("❌ Yakalanmayan Hata:", error);
   // Don't exit immediately on uncaught exception
   // Instead log it and let the reconnection mechanism handle it if needed
-  if (error.message.includes("ECONNRESET") ||
+  if (
+    error.message.includes("ECONNRESET") ||
     error.message.includes("network") ||
-    error.message.includes("connect")) {
+    error.message.includes("connect")
+  ) {
     handleReconnection();
   }
 });
@@ -726,12 +746,18 @@ const startHeartbeat = () => {
 
     // Check if client is connected and reconnect if needed
     if (!client.isReady()) {
-      console.warn("⚠️ Kalp atışı kontrolü sırasında Discord istemcisi hazır değil");
+      console.warn(
+        "⚠️ Kalp atışı kontrolü sırasında Discord istemcisi hazır değil"
+      );
       handleReconnection();
     }
   }, HEARTBEAT_INTERVAL);
 
-  console.log(`✅ Kalp atışı başlatıldı, her ${HEARTBEAT_INTERVAL / 1000 / 60} dakikada bir kontrol ediliyor`);
+  console.log(
+    `✅ Kalp atışı başlatıldı, her ${
+      HEARTBEAT_INTERVAL / 1000 / 60
+    } dakikada bir kontrol ediliyor`
+  );
 };
 
 // Add cleanup for the heartbeat timer
@@ -744,130 +770,5 @@ onExit(() => {
   client.destroy();
 });
 
-class DiscordManager {
-  constructor(config) {
-    this.config = config;
-    this.client = new Client({
-      intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildVoiceStates,
-      ],
-    });
-    this.setupEventHandlers();
-  }
-
-  setupEventHandlers() {
-    this.client.on('ready', () => {
-      console.log(`Bot ${this.client.user.tag} olarak giriş yaptı!`);
-    });
-
-    this.client.on('error', (error) => {
-      console.error('Discord bağlantı hatası:', error);
-    });
-  }
-
-  async sendMessage(channelId, message) {
-    try {
-      const channel = await this.client.channels.fetch(channelId);
-      if (channel) {
-        await channel.send(message);
-      }
-    } catch (error) {
-      console.error('Mesaj gönderilemedi:', error);
-    }
-  }
-}
-
-class FS25Bot {
-  constructor(config) {
-    if (!config) {
-      throw new Error('Yapılandırma parametresi gerekli');
-    }
-    this.config = config;
-    this.serverManager = new ServerManager(config);
-    this.discordManager = new DiscordManager(config);
-    this.validateConfig();
-  }
-
-  validateConfig() {
-    if (!this.config) {
-      throw new Error('Yapılandırma bulunamadı');
-    }
-
-    const requiredConfigs = {
-      'DISCORD_TOKEN': this.config.DISCORD_TOKEN,
-      'URL_SERVER_STATS': this.config.SERVER_STATS_URL,
-      'URL_CAREER_SAVEGAME': this.config.CAREER_SAVEGAME_URL,
-      'DB_PATH': this.config.DB_PATH
-    };
-
-    const missingConfigs = Object.entries(requiredConfigs)
-      .filter(([, value]) => !value)
-      .map(([key]) => key);
-
-    if (missingConfigs.length > 0) {
-      throw new Error(`Eksik yapılandırma değerleri: ${missingConfigs.join(', ')}`);
-    }
-
-    try {
-      new URL(this.config.SERVER_STATS_URL);
-      new URL(this.config.CAREER_SAVEGAME_URL);
-    } catch (error) {
-      throw new Error('Geçersiz sunucu URL formatı');
-    }
-
-    if (this.config.POLL_INTERVAL_MINUTES < 1) {
-      throw new Error('POLL_INTERVAL_MINUTES en az 1 olmalıdır');
-    }
-
-    console.log('✅ Yapılandırma doğrulaması başarılı');
-  }
-
-  async start() {
-    try {
-      await this.discordManager.client.login(this.config.DISCORD_TOKEN);
-      this.startHeartbeat();
-      this.scheduleDailyMessage();
-    } catch (error) {
-      console.error('Bot başlatılamadı:', error);
-      process.exit(1);
-    }
-  }
-
-  startHeartbeat() {
-    setInterval(() => {
-      this.update();
-    }, this.config.POLL_INTERVAL_MINUTES * 60 * 1000);
-  }
-
-  scheduleDailyMessage() {
-    const now = new Date();
-    const targetTime = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      this.config.DAILY_STATS_HOUR,
-      this.config.DAILY_STATS_MINUTE,
-      0
-    );
-
-    if (now > targetTime) {
-      targetTime.setDate(targetTime.getDate() + 1);
-    }
-
-    const delay = targetTime.getTime() - now.getTime();
-    setTimeout(() => {
-      this.sendUptimeData();
-      this.scheduleDailyMessage();
-    }, delay);
-  }
-}
-
-// Yeni başlatma kodu
-const bot = new FS25Bot(CONFIG);
-bot.start().catch(error => {
-  console.error('Bot başlatılamadı:', error);
-  process.exit(1);
-});
+// Start the initialization process
+init();
