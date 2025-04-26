@@ -82,59 +82,6 @@ const requestTimestamps = new Map();
 const blockedIPs = new Map();
 const BLOCK_DURATION = 3600000; // 1 saat
 
-// Çevre değişkenlerinin doğrulaması
-function validateConfig() {
-  const requiredVars = [
-    'DISCORD_TOKEN',
-    'SERVER_STATS_URL',
-    'CAREER_SAVEGAME_URL',
-    'DB_PATH'
-  ];
-
-  for (const varName of requiredVars) {
-    if (!CONFIG[varName]) {
-      throw new Error(`Gerekli çevre değişkeni eksik: ${varName}`);
-    }
-  }
-
-  // URL doğrulaması
-  try {
-    new URL(CONFIG.SERVER_STATS_URL);
-    new URL(CONFIG.CAREER_SAVEGAME_URL);
-  } catch (e) {
-    throw new Error('Geçersiz URL formatı');
-  }
-}
-
-// Rate limiting kontrolü
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const timestamps = requestTimestamps.get(ip) || [];
-  const windowStart = now - CONFIG.RATE_LIMIT_WINDOW;
-
-  // Eski istekleri temizle
-  const validTimestamps = timestamps.filter(timestamp => timestamp > windowStart);
-  requestTimestamps.set(ip, validTimestamps);
-
-  // Engellenmiş IP kontrolü
-  if (blockedIPs.has(ip)) {
-    const blockEnd = blockedIPs.get(ip);
-    if (now < blockEnd) {
-      return false;
-    }
-    blockedIPs.delete(ip);
-  }
-
-  // Rate limit kontrolü
-  if (validTimestamps.length >= CONFIG.RATE_LIMIT_REQUESTS) {
-    blockedIPs.set(ip, now + BLOCK_DURATION);
-    return false;
-  }
-
-  validTimestamps.push(now);
-  return true;
-}
-
 class ServerManager {
   constructor(config) {
     this.config = config;
@@ -839,6 +786,38 @@ class FS25Bot {
     this.serverManager = new ServerManager(config);
     this.discordManager = new DiscordManager(config);
     this.validateConfig();
+  }
+
+  validateConfig() {
+    const requiredConfigs = {
+      'DISCORD_TOKEN': this.config.DISCORD_TOKEN,
+      'URL_SERVER_STATS': this.config.SERVER_STATS_URL,
+      'URL_CAREER_SAVEGAME': this.config.CAREER_SAVEGAME_URL,
+      'DB_PATH': this.config.DB_PATH
+    };
+
+    const missingConfigs = Object.entries(requiredConfigs)
+      .filter(([, value]) => !value)
+      .map(([key]) => key);
+
+    if (missingConfigs.length > 0) {
+      throw new Error(`Eksik yapılandırma değerleri: ${missingConfigs.join(', ')}`);
+    }
+
+    // URL formatı kontrolü
+    try {
+      new URL(this.config.SERVER_STATS_URL);
+      new URL(this.config.CAREER_SAVEGAME_URL);
+    } catch (error) {
+      throw new Error('Geçersiz sunucu URL formatı');
+    }
+
+    // Sayısal değerlerin kontrolü
+    if (this.config.POLL_INTERVAL_MINUTES < 1) {
+      throw new Error('POLL_INTERVAL_MINUTES en az 1 olmalıdır');
+    }
+
+    console.log('✅ Yapılandırma doğrulaması başarılı');
   }
 
   async start() {
