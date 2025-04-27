@@ -213,7 +213,7 @@ async function checkPlayerJoinLeave() {
     // Send join notifications
     for (const player of joinedPlayers) {
       try {
-        const joinMessage = `🟢 **${player}** sunucuya katıldı!`;
+        const joinMessage = `<:2171online:1319749534204563466> **${player}** sunucuya katıldı!`;
         sendPlayerActivityMessage(joinMessage);
         console.log(`✅ Oyuncu giriş bildirimi: ${player}`);
         
@@ -227,7 +227,7 @@ async function checkPlayerJoinLeave() {
     // Send leave notifications
     for (const player of leftPlayers) {
       try {
-        const leaveMessage = `🔴 **${player}** sunucudan ayrıldı!`;
+        const leaveMessage = `<:1006donotdisturb:1319749525283409971> **${player}** sunucudan ayrıldı!`;
         sendPlayerActivityMessage(leaveMessage);
         console.log(`👋 Oyuncu çıkış bildirimi: ${player}`);
         
@@ -502,10 +502,10 @@ const sendServerStatusMessage = (status, channelId) => {
   let statusEmoji = "";
 
   if (status === "online") {
-    statusEmoji = "🟢";
+    statusEmoji = "<:2171online:1319749534204563466>";
     statusMessage = "Sunucu çevrimiçi";
   } else if (status === "offline") {
-    statusEmoji = "🔴";
+    statusEmoji = "<:1006donotdisturb:1319749525283409971>";
     statusMessage = "Sunucu çevrimdışı";
   }
 
