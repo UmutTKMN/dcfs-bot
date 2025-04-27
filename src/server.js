@@ -565,15 +565,8 @@ const update = () => {
       if (!reachable) {
         // Sunucu erişilemez durumu değiştiyse
         if (!db.server.unreachable) {
-          if (!CONFIG.DISABLE_UNREACHABLE_FOUND_MESSAGES) {
-            sendMessage("❌ **Sunucuya erişilemiyor!**");
-          }
           db.server.unreachable = true;
           fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
-
-          // Bot durumunu güncelle
-          client.user.setActivity("Sunucu Erişilemez", { type: "WATCHING" });
-          client.user.setStatus("dnd");
 
           // Sunucu çevrimdışı durumu değiştiyse
           if (db.server.online) {
