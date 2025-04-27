@@ -11,7 +11,7 @@ const {
   GatewayIntentBits,
   PermissionsBitField,
   ChannelType,
-  EmbedBuilder,
+  EmbedBuilder
 } = require("discord.js");
 const { onExit } = require("signal-exit");
 require("dotenv-flow").config({
@@ -41,6 +41,7 @@ const CONFIG = {
   PLAYER_ACTIVITY_CHANNEL_ID: process.env.FS25_BOT_PLAYER_ACTIVITY_CHANNEL_ID,
   DISCORD_SERVER_NAME: process.env.FS25_BOT_DISCORD_SERVER_NAME,
   DISCORD_CHANNEL_NAME: process.env.FS25_BOT_DISCORD_CHANNEL_NAME,
+  PLAYER_LOGS_DIR: process.env.FS25_BOT_PLAYER_LOGS_DIR || "./logs/players",
   POLL_INTERVAL_MINUTES: Math.max(
     parseInt(process.env.FS25_BOT_POLL_INTERVAL_MINUTES, 10) || 5,
     1
@@ -86,6 +87,54 @@ const client = new Client({
 });
 
 /**
+ * PLAYER ACTIVITY LOGGING
+ */
+
+// Oyuncu aktivitelerini loglayan yardımcı fonksiyon
+function logPlayerActivity(playerName, action) {
+  try {
+    // Log dizini yoksa oluştur
+    const logDir = CONFIG.PLAYER_LOGS_DIR;
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+      console.log(`✅ Log dizini oluşturuldu: ${logDir}`);
+    }
+
+    // Günün tarihini al (YYYY-MM-DD formatında)
+    const today = new Date().toISOString().split('T')[0];
+    const logFilePath = path.join(logDir, `player_activity_${today}.log`);
+
+    // Şu anki tam zamanı al
+    const timestamp = new Date().toISOString().replace('T', ' ').substr(0, 19);
+
+    // Log mesajını oluştur
+    const logMessage = `[${timestamp}] ${playerName} ${action === 'join' ? 'sunucuya katıldı' : 'sunucudan ayrıldı'}\n`;
+
+    // Dosyaya ekle (append)
+    fs.appendFileSync(logFilePath, logMessage);
+  } catch (error) {
+    console.error(`❌ Oyuncu aktivitesi loglanırken hata: ${error.message}`);
+  }
+}
+
+// Bugünkü log dosyasını okuyan yardımcı fonksiyon
+function getTodayPlayerActivityLogs() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const logFilePath = path.join(CONFIG.PLAYER_LOGS_DIR, `player_activity_${today}.log`);
+    
+    if (!fs.existsSync(logFilePath)) {
+      return "Bugün için oyuncu aktivitesi kaydı bulunmuyor.";
+    }
+    
+    return fs.readFileSync(logFilePath, 'utf8');
+  } catch (error) {
+    console.error(`❌ Bugünkü log dosyası okunurken hata: ${error.message}`);
+    return "Log dosyası okunamadı.";
+  }
+}
+
+/**
  * PLAYER JOIN/LEAVE TRACKING FUNCTIONS
  */
 
@@ -119,9 +168,11 @@ async function checkPlayerJoinLeave() {
     // Result veya activePlayers null/undefined ise boş bir liste kullan
     const activePlayers = result?.activePlayers || [];
     
-    // Get current active player names
+    // Get current active player names - Hatalı verileri filtrele
     const currentActivePlayerNames = new Set(
-      activePlayers.map(player => player._)
+      activePlayers
+        .filter(player => player && player._)  // undefined veya null olan player._'leri filtrele
+        .map(player => player._)
     );
     
     // İlk çalıştırma kontrolü
@@ -141,25 +192,60 @@ async function checkPlayerJoinLeave() {
       player => !currentActivePlayerNames.has(player)
     );
     
+    // Çok fazla değişiklik varsa muhtemelen bir bağlantı kesintisi olmuştur
+    const totalChanges = joinedPlayers.length + leftPlayers.length;
+    if (totalChanges > 5) {
+      console.warn(`⚠️ Bir defada ${totalChanges} oyuncu değişikliği tespit edildi, muhtemelen sunucu yeniden başlatıldı veya bağlantı kesintisi oldu.`);
+      
+      // Sadece logla ama bildirim gönderme
+      if (joinedPlayers.length > 0) {
+        console.log(`ℹ️ Toplu giriş tespit edildi: ${joinedPlayers.join(', ')}`);
+      }
+      if (leftPlayers.length > 0) {
+        console.log(`ℹ️ Toplu çıkış tespit edildi: ${leftPlayers.join(', ')}`);
+      }
+      
+      // Oyuncu listesini güncelleyip çık
+      previousActivePlayers = currentActivePlayerNames;
+      return;
+    }
+    
     // Send join notifications
-    joinedPlayers.forEach(player => {
-      const joinMessage = `<:greenlight:1319749534204563466> **${player}** sunucuya katıldı!`;
-      sendPlayerActivityMessage(joinMessage);
-      console.log(`✅ Oyuncu giriş bildirimi: ${player}`);
-    });
+    for (const player of joinedPlayers) {
+      try {
+        const joinMessage = `🟢 **${player}** sunucuya katıldı!`;
+        sendPlayerActivityMessage(joinMessage);
+        console.log(`✅ Oyuncu giriş bildirimi: ${player}`);
+        
+        // Oyuncu girişini logla
+        logPlayerActivity(player, 'join');
+      } catch (notifyError) {
+        console.error(`❌ Oyuncu giriş bildirimi gönderilirken hata (${player}):`, notifyError.message);
+      }
+    }
     
     // Send leave notifications
-    leftPlayers.forEach(player => {
-      const leaveMessage = `<:redlight:1319749525283409971> **${player}** sunucudan ayrıldı!`;
-      sendPlayerActivityMessage(leaveMessage);
-      console.log(`👋 Oyuncu çıkış bildirimi: ${player}`);
-    });
+    for (const player of leftPlayers) {
+      try {
+        const leaveMessage = `🔴 **${player}** sunucudan ayrıldı!`;
+        sendPlayerActivityMessage(leaveMessage);
+        console.log(`👋 Oyuncu çıkış bildirimi: ${player}`);
+        
+        // Oyuncu çıkışını logla
+        logPlayerActivity(player, 'leave');
+      } catch (notifyError) {
+        console.error(`❌ Oyuncu çıkış bildirimi gönderilirken hata (${player}):`, notifyError.message);
+      }
+    }
     
     // Update previous player list
     previousActivePlayers = currentActivePlayerNames;
     
   } catch (error) {
     console.error("❌ Oyuncu giriş/çıkış kontrolü sırasında hata:", error.message);
+    if (error.stack) {
+      console.error("Hata Detayları:", error.stack);
+    }
   }
 }
 
@@ -211,77 +297,84 @@ async function fetchUptimeData() {
 
 // Update player uptime data in JSON file
 async function updateUptimeData() {
-  const uptimeData = await fetchUptimeData();
-  if (
-    !uptimeData ||
-    !uptimeData.activePlayers ||
-    uptimeData.activePlayers.length === 0
-  ) {
-    console.log("🔹 Aktif oyuncu bulunamadı, JSON dosyası güncellenmedi.");
-    return;
-  }
-
-  let currentData = { players: {} };
-
-  // Create directory if it doesn't exist
-  const dirPath = path.dirname(CONFIG.UPTIME_FILE);
-  if (!fs.existsSync(dirPath)) {
-    try {
-      fs.mkdirSync(dirPath, { recursive: true });
-      console.log(`✅ Dizin oluşturuldu: ${dirPath}`);
-    } catch (error) {
-      console.error(`❌ Dizin oluşturulamadı: ${dirPath}`, error.message);
+  try {
+    const uptimeData = await fetchUptimeData();
+    if (
+      !uptimeData ||
+      !uptimeData.activePlayers ||
+      uptimeData.activePlayers.length === 0
+    ) {
+      console.log("🔹 Aktif oyuncu bulunamadı, JSON dosyası güncellenmedi.");
       return;
     }
-  }
 
-  // Read existing JSON file if it exists
-  if (fs.existsSync(CONFIG.UPTIME_FILE)) {
+    let currentData = { players: {} };
+
+    // Create directory if it doesn't exist
+    const dirPath = path.dirname(CONFIG.UPTIME_FILE);
+    if (!fs.existsSync(dirPath)) {
+      try {
+        fs.mkdirSync(dirPath, { recursive: true });
+        console.log(`✅ Dizin oluşturuldu: ${dirPath}`);
+      } catch (error) {
+        console.error(`❌ Dizin oluşturulamadı: ${dirPath}`, error.message);
+        return;
+      }
+    }
+
+    // Read existing JSON file if it exists
+    if (fs.existsSync(CONFIG.UPTIME_FILE)) {
+      try {
+        currentData = JSON.parse(fs.readFileSync(CONFIG.UPTIME_FILE, "utf8"));
+        if (!currentData.players) currentData.players = {};
+      } catch (error) {
+        console.error("❌ JSON dosyası okunurken hata:", error.message);
+        // Continue with empty players object
+        currentData = { players: {} };
+      }
+    }
+
+    // Update or add player uptime data
+    uptimeData.activePlayers.forEach((player) => {
+      const name = player._; // Player name
+      if (!name) return; // Adı olmayan oyuncuları atla
+      
+      const currentUptime = parseInt(player.$.uptime || "0", 10); // Current uptime value
+
+      // If player exists in JSON
+      if (currentData.players[name]) {
+        const previousUptime = currentData.players[name].lastUptime || 0;
+        const uptimeDifference = Math.max(0, currentUptime - previousUptime);
+        currentData.players[name].uptime += uptimeDifference;
+        currentData.players[name].lastUptime = currentUptime;
+        currentData.players[name].lastSeen = new Date().toISOString();
+      } else {
+        // New player
+        currentData.players[name] = {
+          uptime: currentUptime,
+          lastUptime: currentUptime,
+          firstSeen: new Date().toISOString(),
+          lastSeen: new Date().toISOString(),
+        };
+      }
+    });
+
+    // Update JSON file
     try {
-      currentData = JSON.parse(fs.readFileSync(CONFIG.UPTIME_FILE, "utf8"));
-      if (!currentData.players) currentData.players = {};
+      fs.writeFileSync(
+        CONFIG.UPTIME_FILE,
+        JSON.stringify(currentData, null, 2),
+        "utf8"
+      );
+      console.log("✅ Oyuncu çalışma süresi verileri başarıyla güncellendi.");
     } catch (error) {
-      console.error("❌ JSON dosyası okunurken hata:", error.message);
-      // Continue with empty players object
+      console.error(
+        "❌ Çalışma süresi dosyası güncellenirken hata:",
+        error.message
+      );
     }
-  }
-
-  // Update or add player uptime data
-  uptimeData.activePlayers.forEach((player) => {
-    const name = player._; // Player name
-    const currentUptime = parseInt(player.$.uptime || "0", 10); // Current uptime value
-
-    // If player exists in JSON
-    if (currentData.players[name]) {
-      const previousUptime = currentData.players[name].lastUptime || 0;
-      const uptimeDifference = Math.max(0, currentUptime - previousUptime);
-      currentData.players[name].uptime += uptimeDifference;
-      currentData.players[name].lastUptime = currentUptime;
-      currentData.players[name].lastSeen = new Date().toISOString();
-    } else {
-      // New player
-      currentData.players[name] = {
-        uptime: currentUptime,
-        lastUptime: currentUptime,
-        firstSeen: new Date().toISOString(),
-        lastSeen: new Date().toISOString(),
-      };
-    }
-  });
-
-  // Update JSON file
-  try {
-    fs.writeFileSync(
-      CONFIG.UPTIME_FILE,
-      JSON.stringify(currentData, null, 2),
-      "utf8"
-    );
-    console.log("✅ Oyuncu çalışma süresi verileri başarıyla güncellendi.");
   } catch (error) {
-    console.error(
-      "❌ Çalışma süresi dosyası güncellenirken hata:",
-      error.message
-    );
+    console.error("❌ Uptime verisi güncellenirken beklenmeyen hata:", error.message);
   }
 }
 
@@ -409,10 +502,10 @@ const sendServerStatusMessage = (status, channelId) => {
   let statusEmoji = "";
 
   if (status === "online") {
-    statusEmoji = "<:2171online:1319749534204563466>";
+    statusEmoji = "🟢";
     statusMessage = "Sunucu çevrimiçi";
   } else if (status === "offline") {
-    statusEmoji = "<:1006donotdisturb:1319749525283409971>";
+    statusEmoji = "🔴";
     statusMessage = "Sunucu çevrimdışı";
   }
 
@@ -678,6 +771,9 @@ function sendUptimeData() {
           iconURL: botAvatarURL,
         });
 
+      // Günlük oyuncu giriş-çıkış istatistiklerini de ekle
+      addPlayerActivityStats(embed);
+
       // Send embed to designated channel
       const channel = client.channels.cache.get(
         CONFIG.DAILY_SUMMARY_CHANNEL_ID
@@ -704,6 +800,48 @@ function sendUptimeData() {
       console.error("❌ JSON ayrıştırma hatası:", parseError.message);
     }
   });
+}
+
+// Günlük oyuncu aktivite istatistiklerini embed'e ekle
+function addPlayerActivityStats(embed) {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const logFilePath = path.join(CONFIG.PLAYER_LOGS_DIR, `player_activity_${today}.log`);
+    
+    if (!fs.existsSync(logFilePath)) {
+      embed.addFields({ 
+        name: "📊 Bugünkü Oyuncu Aktivitesi", 
+        value: "Bugün için kayıtlı oyuncu giriş/çıkış aktivitesi bulunmuyor."
+      });
+      return;
+    }
+
+    const logs = fs.readFileSync(logFilePath, 'utf8').split('\n').filter(line => line.trim() !== '');
+    
+    if (logs.length === 0) {
+      embed.addFields({ 
+        name: "📊 Bugünkü Oyuncu Aktivitesi", 
+        value: "Bugün hiç oyuncu giriş/çıkış aktivitesi kaydedilmemiş."
+      });
+      return;
+    }
+
+    // Son 10 aktiviteyi göster
+    const maxEntries = Math.min(10, logs.length);
+    const lastEntries = logs.slice(-maxEntries);
+    
+    embed.addFields({ 
+      name: `📊 Bugünkü Oyuncu Aktivitesi (Son ${maxEntries}/${logs.length})`, 
+      value: lastEntries.join('\n')
+    });
+    
+  } catch (error) {
+    console.error("❌ Oyuncu aktivite istatistikleri eklenirken hata:", error.message);
+    embed.addFields({ 
+      name: "📊 Bugünkü Oyuncu Aktivitesi", 
+      value: "Aktivite verileri yüklenirken bir hata oluştu."
+    });
+  }
 }
 
 /**
@@ -785,9 +923,30 @@ const init = async () => {
     if (!fs.existsSync(dbDir)) {
       try {
         fs.mkdirSync(dbDir, { recursive: true });
-        console.log(`✅ Dizin oluşturuldu: ${dbDir}`);
+        console.log(`✅ Veritabanı dizini oluşturuldu: ${dbDir}`);
       } catch (error) {
         console.error(`❌ ${dbDir} dizini oluşturulamadı:`, error.message);
+      }
+    }
+
+    // Check for logs directory
+    if (!fs.existsSync(CONFIG.PLAYER_LOGS_DIR)) {
+      try {
+        fs.mkdirSync(CONFIG.PLAYER_LOGS_DIR, { recursive: true });
+        console.log(`✅ Oyuncu log dizini oluşturuldu: ${CONFIG.PLAYER_LOGS_DIR}`);
+      } catch (error) {
+        console.error(`❌ ${CONFIG.PLAYER_LOGS_DIR} dizini oluşturulamadı:`, error.message);
+      }
+    }
+
+    // Check for uptime directory
+    const uptimeDir = path.dirname(CONFIG.UPTIME_FILE);
+    if (!fs.existsSync(uptimeDir)) {
+      try {
+        fs.mkdirSync(uptimeDir, { recursive: true });
+        console.log(`✅ Çalışma süresi dizini oluşturuldu: ${uptimeDir}`);
+      } catch (error) {
+        console.error(`❌ ${uptimeDir} dizini oluşturulamadı:`, error.message);
       }
     }
 
@@ -852,6 +1011,31 @@ client.on("ready", async () => {
   if (intervalTimer) {
     clearInterval(intervalTimer);
   }
+
+  // Log başlangıç bilgisi
+  console.log("===== OYUNCU AKTİVİTE LOGLARININ DURUMU =====");
+  const today = new Date().toISOString().split('T')[0];
+  const logFilePath = path.join(CONFIG.PLAYER_LOGS_DIR, `player_activity_${today}.log`);
+  if (fs.existsSync(logFilePath)) {
+    console.log(`✅ Bugünkü (${today}) log dosyası mevcut: ${logFilePath}`);
+    const logStats = fs.statSync(logFilePath);
+    console.log(`📊 Log dosyası boyutu: ${(logStats.size / 1024).toFixed(2)} KB`);
+    
+    // Son 5 aktiviteyi göster
+    const recentLogs = getTodayPlayerActivityLogs().split('\n').filter(line => line.trim() !== '');
+    const logCount = recentLogs.length;
+    
+    if (logCount > 0) {
+      console.log(`📝 Bugün toplam ${logCount} aktivite kaydedilmiş.`);
+      console.log("Son aktiviteler:");
+      recentLogs.slice(-5).forEach(log => console.log(`  ${log}`));
+    } else {
+      console.log("📝 Bugün henüz aktivite kaydedilmemiş.");
+    }
+  } else {
+    console.log(`📝 Bugün (${today}) için henüz log dosyası oluşturulmamış.`);
+  }
+  console.log("=============================================");
 
   update(); // Initial update
   intervalTimer = setInterval(update, CONFIG.POLL_INTERVAL_MINUTES * 60000);
