@@ -4,7 +4,7 @@ const _ = require("lodash");
 const merge = require("deepmerge");
 const fs = require("fs");
 const path = require("path");
-const axios = require("axios");
+const fetch = require("fetch-retry")(global.fetch);
 const xml2js = require("xml2js");
 const {
   Client,
@@ -56,43 +56,6 @@ const CONFIG = {
     process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES === "true",
   PURGE_ON_STARTUP:
     process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_ON_STARTUP === "true",
-  HTTP_TIMEOUT: parseInt(process.env.FS25_BOT_HTTP_TIMEOUT, 10) || 30000, // 30 saniye varsayılan timeout
-  CONNECTION_RETRY: parseInt(process.env.FS25_BOT_CONNECTION_RETRY, 10) || 3, // Bağlantı hatası durumunda yeniden deneme sayısı
-};
-
-// HTTP istek yapılandırması
-axios.defaults.timeout = CONFIG.HTTP_TIMEOUT;
-axios.defaults.maxRedirects = 5;
-
-// Axios istek yeniden deneme mekanizması
-const axiosRetry = async (url, options = {}, maxRetries = 3, retryDelay = 2000) => {
-  let lastError = null;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await axios.get(url, options);
-    } catch (error) {
-      lastError = error;
-      
-      // Socket hang up, ETIMEDOUT, ECONNREFUSED gibi hataları kontrol et
-      const isNetworkError = !error.response && (
-        error.code === 'ECONNABORTED' || 
-        error.code === 'ETIMEDOUT' || 
-        error.code === 'ECONNREFUSED' ||
-        error.message.includes('socket hang up')
-      );
-      
-      if (isNetworkError && attempt < maxRetries) {
-        console.log(`⚠️ Bağlantı hatası, yeniden deneniyor (${attempt}/${maxRetries}): ${error.message}`);
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
-        continue;
-      }
-      
-      throw error;
-    }
-  }
-  
-  throw lastError;
 };
 
 // State variables
@@ -101,12 +64,6 @@ let db = getDefaultDatabase();
 let nextPurge = 0;
 let lastUptimeUpdateTime = Date.now();
 let previousActivePlayers = new Set(); // Son kontrol edilen aktif oyuncu listesi
-
-// Add these constants for reconnection handling
-const MAX_RECONNECT_ATTEMPTS = 10;
-const RECONNECT_DELAY = 5000; // 5 seconds
-let reconnectAttempts = 0;
-let isReconnecting = false;
 
 // Initialize Discord client with all necessary intents
 const client = new Client({
@@ -288,18 +245,21 @@ async function checkPlayerJoinLeave() {
 // Fetch player data from server stats XML
 async function fetchUptimeData() {
   try {
-    // Retry mekanizması ile sunucuya bağlan
-    const response = await axiosRetry(CONFIG.SERVER_STATS_URL, {
-      timeout: CONFIG.HTTP_TIMEOUT,
-      headers: { 'Cache-Control': 'no-cache' }
-    }, CONFIG.CONNECTION_RETRY, 3000);
+    // fetch-retry ile istek gönder
+    const response = await fetch(CONFIG.SERVER_STATS_URL, {
+      method: "GET",
+      body: null,
+      retries: 3,
+      retryDelay: 1000
+    });
     
-    if (!response || !response.data) {
-      console.log("⚠️ Sunucudan boş yanıt alındı");
+    if (!response.ok) {
+      console.log(`⚠️ Sunucudan hatalı yanıt: ${response.status}`);
       return { serverName: "Bilinmeyen Sunucu", activePlayers: [] };
     }
     
-    const data = await xml2js.parseStringPromise(response.data, {
+    const textData = await response.text();
+    const data = await xml2js.parseStringPromise(textData, {
       explicitArray: false,
     });
 
@@ -323,9 +283,6 @@ async function fetchUptimeData() {
     return { serverName, activePlayers };
   } catch (error) {
     console.error("❌ Çalışma süresi verisi alınırken hata:", error.message);
-    if (error.code) {
-      console.error(`    Hata kodu: ${error.code}`);
-    }
     // Hata durumunda boş bir liste dönelim
     return { serverName: "Bilinmeyen Sunucu", activePlayers: [] };
   }
@@ -573,13 +530,15 @@ const attemptPurge = () => {
 // Sunucu erişilebilirlik kontrolü için yardımcı fonksiyon
 async function isServerReachable() {
   try {
-    // Retry mekanizması ile sunucuya bağlan
-    const response = await axiosRetry(CONFIG.SERVER_STATS_URL, {
-      timeout: CONFIG.HTTP_TIMEOUT / 2, // Daha kısa timeout ile hızlı kontrol
-      headers: { 'Cache-Control': 'no-cache' }
-    }, CONFIG.CONNECTION_RETRY, 1000);
+    // fetch-retry ile istek gönder
+    const response = await fetch(CONFIG.SERVER_STATS_URL, {
+      method: "GET",
+      body: null,
+      retries: 2,
+      retryDelay: 500
+    });
     
-    return response && response.status === 200;
+    return response.ok;
   } catch (error) {
     console.error(`❌ Sunucu erişilebilirlik kontrolü başarısız: ${error.message}`);
     return false;
@@ -878,63 +837,12 @@ const setupDiscordClient = async () => {
     await client.login(CONFIG.DISCORD_TOKEN);
     console.log("✅ Discord'a bağlanıldı!");
 
-    // Reset reconnection counter on successful connection
-    reconnectAttempts = 0;
-    isReconnecting = false;
-
     return true;
   } catch (err) {
     console.error("❌ Discord'a bağlanılamadı:", err.message);
     return false;
   }
 };
-
-// Add a reconnection handler
-const handleReconnection = async () => {
-  if (isReconnecting) return;
-
-  isReconnecting = true;
-
-  if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-    reconnectAttempts++;
-    console.log(
-      `Yeniden bağlanmaya çalışılıyor (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}), ${
-        RECONNECT_DELAY / 1000
-      } saniye içinde...`
-    );
-
-    setTimeout(async () => {
-      const success = await setupDiscordClient();
-      if (!success) {
-        handleReconnection();
-      }
-    }, RECONNECT_DELAY);
-  } else {
-    console.error(
-      `❌ Maksimum yeniden bağlanma denemesi (${MAX_RECONNECT_ATTEMPTS}) aşıldı. Lütfen bağlantınızı kontrol edin ve botu manuel olarak yeniden başlatın.`
-    );
-    isReconnecting = false;
-  }
-};
-
-// Modify error event to use reconnection
-client.on("error", (error) => {
-  console.error("❌ Discord istemci hatası:", error.message);
-  handleReconnection();
-});
-
-// Add disconnect handler
-client.on("disconnect", (event) => {
-  console.error(
-    `❌ Discord istemcisi ${event.code} koduyla bağlantısı kesildi. Sebep: ${event.reason}`
-  );
-  handleReconnection();
-});
-
-// Add reconnect event
-client.on("reconnecting", () => {
-  console.log("⏳ Discord istemcisi yeniden bağlanıyor...");
-});
 
 // Update the initialization code
 const init = async () => {
@@ -986,11 +894,11 @@ const init = async () => {
     // Setup Discord client with reconnection support
     const connected = await setupDiscordClient();
     if (!connected) {
-      handleReconnection();
+      console.error("❌ Discord'a bağlanılamadı, başlatma işlemi iptal edildi.");
+      return;
     }
   } catch (error) {
     console.error("❌ Başlatma hatası:", error.message);
-    handleReconnection();
   }
 };
 
