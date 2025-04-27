@@ -38,6 +38,7 @@ const CONFIG = {
   DB_PATH: process.env.FS25_BOT_DB_PATH,
   DAILY_SUMMARY_CHANNEL_ID: process.env.FS25_BOT_DAILY_SUMMARY_CHANNEL_ID,
   UPDATE_CHANNEL_ID: process.env.FS25_BOT_UPDATE_CHANNEL_ID,
+  PLAYER_ACTIVITY_CHANNEL_ID: process.env.FS25_BOT_PLAYER_ACTIVITY_CHANNEL_ID,
   DISCORD_SERVER_NAME: process.env.FS25_BOT_DISCORD_SERVER_NAME,
   DISCORD_CHANNEL_NAME: process.env.FS25_BOT_DISCORD_CHANNEL_NAME,
   POLL_INTERVAL_MINUTES: Math.max(
@@ -61,6 +62,7 @@ let intervalTimer = null;
 let db = getDefaultDatabase();
 let nextPurge = 0;
 let lastUptimeUpdateTime = Date.now();
+let previousActivePlayers = new Set(); // Son kontrol edilen aktif oyuncu listesi
 
 // Add these constants for reconnection handling
 const MAX_RECONNECT_ATTEMPTS = 10;
@@ -77,6 +79,75 @@ const client = new Client({
     GatewayIntentBits.GuildVoiceStates,
   ],
 });
+
+/**
+ * PLAYER JOIN/LEAVE TRACKING FUNCTIONS
+ */
+
+// Send player activity message to a specific channel
+const sendPlayerActivityMessage = (message) => {
+  if (!CONFIG.PLAYER_ACTIVITY_CHANNEL_ID) {
+    // Özel kanal ayarlanmamışsa normal kanallara gönder
+    sendMessage(message);
+    return;
+  }
+
+  const channel = client.channels.cache.get(CONFIG.PLAYER_ACTIVITY_CHANNEL_ID);
+  if (!channel) {
+    console.error(`❌ Oyuncu aktivite kanalı bulunamadı, ID: ${CONFIG.PLAYER_ACTIVITY_CHANNEL_ID}`);
+    // Kanal bulunamadığında normal kanallara gönder
+    sendMessage(message);
+    return;
+  }
+
+  console.log(`Oyuncu aktivite mesajı gönderiliyor: ${channel.name}`);
+  channel.send(message).catch((error) => {
+    console.error(`❌ Oyuncu aktivite mesajı gönderilirken hata: ${error.message}`);
+  });
+};
+
+// Detect player join/leave events and send notification to Discord
+async function checkPlayerJoinLeave() {
+  try {
+    const { activePlayers } = await fetchUptimeData();
+    if (!activePlayers) return;
+    
+    // Get current active player names
+    const currentActivePlayerNames = new Set(
+      activePlayers.map(player => player._)
+    );
+    
+    // Find players who joined (in current but not in previous)
+    const joinedPlayers = [...currentActivePlayerNames].filter(
+      player => !previousActivePlayers.has(player)
+    );
+    
+    // Find players who left (in previous but not in current)
+    const leftPlayers = [...previousActivePlayers].filter(
+      player => !currentActivePlayerNames.has(player)
+    );
+    
+    // Send join notifications
+    joinedPlayers.forEach(player => {
+      const joinMessage = `<:greenlight:1319749534204563466> **${player}** sunucuya katıldı!`;
+      sendPlayerActivityMessage(joinMessage);
+      console.log(`✅ Oyuncu giriş bildirimi: ${player}`);
+    });
+    
+    // Send leave notifications
+    leftPlayers.forEach(player => {
+      const leaveMessage = `<:redlight:1319749525283409971> **${player}** sunucudan ayrıldı!`;
+      sendPlayerActivityMessage(leaveMessage);
+      console.log(`👋 Oyuncu çıkış bildirimi: ${player}`);
+    });
+    
+    // Update previous player list
+    previousActivePlayers = currentActivePlayerNames;
+    
+  } catch (error) {
+    console.error("❌ Oyuncu giriş/çıkış kontrolü sırasında hata:", error.message);
+  }
+}
 
 /**
  * PLAYER UPTIME TRACKING FUNCTIONS
@@ -351,6 +422,9 @@ const update = () => {
     updateUptimeData();
     lastUptimeUpdateTime = now;
   }
+
+  // Check for player join/leave events
+  checkPlayerJoinLeave();
 
   getDataFromAPI()
     .then((rawData) => {
@@ -665,8 +739,19 @@ const init = async () => {
 };
 
 // Discord ready event
-client.on("ready", () => {
+client.on("ready", async () => {
   console.log(`✅ Bot ${client.user.tag} olarak çalışıyor!`);
+
+  // Initialize active player list on startup
+  try {
+    const { activePlayers } = await fetchUptimeData();
+    if (activePlayers) {
+      previousActivePlayers = new Set(activePlayers.map(player => player._));
+      console.log(`✅ Başlangıç aktif oyuncu listesi yüklendi (${previousActivePlayers.size} oyuncu)`);
+    }
+  } catch (error) {
+    console.error("❌ Başlangıç oyuncu listesi yüklenirken hata:", error.message);
+  }
 
   // Setup message purging
   if (willPurge()) {
