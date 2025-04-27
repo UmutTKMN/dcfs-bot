@@ -55,7 +55,12 @@ const CONFIG = {
     process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES === "true",
   PURGE_ON_STARTUP:
     process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_ON_STARTUP === "true",
+  HTTP_TIMEOUT: parseInt(process.env.FS25_BOT_HTTP_TIMEOUT, 10) || 15000, // 15 saniye varsayılan timeout
 };
+
+// HTTP istek yapılandırması
+axios.defaults.timeout = CONFIG.HTTP_TIMEOUT;
+axios.defaults.maxRedirects = 5;
 
 // State variables
 let intervalTimer = null;
@@ -109,13 +114,22 @@ const sendPlayerActivityMessage = (message) => {
 // Detect player join/leave events and send notification to Discord
 async function checkPlayerJoinLeave() {
   try {
-    const { activePlayers } = await fetchUptimeData();
-    if (!activePlayers) return;
+    const result = await fetchUptimeData();
+    
+    // Result veya activePlayers null/undefined ise boş bir liste kullan
+    const activePlayers = result?.activePlayers || [];
     
     // Get current active player names
     const currentActivePlayerNames = new Set(
       activePlayers.map(player => player._)
     );
+    
+    // İlk çalıştırma kontrolü
+    if (previousActivePlayers.size === 0) {
+      console.log("İlk çalıştırma: Oyuncu listesi kaydediliyor");
+      previousActivePlayers = currentActivePlayerNames;
+      return;
+    }
     
     // Find players who joined (in current but not in previous)
     const joinedPlayers = [...currentActivePlayerNames].filter(
@@ -156,15 +170,29 @@ async function checkPlayerJoinLeave() {
 // Fetch player data from server stats XML
 async function fetchUptimeData() {
   try {
-    const response = await axios.get(CONFIG.SERVER_STATS_URL);
+    const response = await axios.get(CONFIG.SERVER_STATS_URL, {
+      timeout: 10000, // 10 saniye timeout ekleyelim
+      maxRetries: 3,  // Yeniden deneme sayısı
+    });
+    
+    if (!response || !response.data) {
+      console.log("⚠️ Sunucudan boş yanıt alındı");
+      return { serverName: "Bilinmeyen Sunucu", activePlayers: [] };
+    }
+    
     const data = await xml2js.parseStringPromise(response.data, {
       explicitArray: false,
     });
 
     // Server name
-    const serverName = data.Server.$.name || "Bilinmeyen Sunucu";
+    const serverName = data.Server?.$.name || "Bilinmeyen Sunucu";
 
     // Get player data from slots
+    if (!data.Server || !data.Server.Slots || !data.Server.Slots.Player) {
+      console.log("⚠️ XML verisinde oyuncu bilgisi bulunamadı");
+      return { serverName, activePlayers: [] };
+    }
+    
     const playersData = data.Server.Slots.Player;
     const players = Array.isArray(playersData) ? playersData : [playersData];
 
@@ -176,7 +204,8 @@ async function fetchUptimeData() {
     return { serverName, activePlayers };
   } catch (error) {
     console.error("❌ Çalışma süresi verisi alınırken hata:", error.message);
-    return null;
+    // Hata durumunda boş bir liste dönelim
+    return { serverName: "Bilinmeyen Sunucu", activePlayers: [] };
   }
 }
 
@@ -412,6 +441,19 @@ const attemptPurge = () => {
  * MAIN UPDATE FUNCTIONS
  */
 
+// Sunucu erişilebilirlik kontrolü için yardımcı fonksiyon
+async function isServerReachable() {
+  try {
+    const response = await axios.get(CONFIG.SERVER_STATS_URL, {
+      timeout: CONFIG.HTTP_TIMEOUT / 2, // Daha kısa timeout ile hızlı kontrol
+    });
+    return response && response.status === 200;
+  } catch (error) {
+    console.error(`❌ Sunucu erişilebilirlik kontrolü başarısız: ${error.message}`);
+    return false;
+  }
+}
+
 // Main update function - fetches data and updates Discord
 const update = () => {
   console.log("Sunucu durumu kontrol ediliyor...");
@@ -423,99 +465,133 @@ const update = () => {
     lastUptimeUpdateTime = now;
   }
 
-  // Check for player join/leave events
-  checkPlayerJoinLeave();
+  // Önce sunucuya erişilebildiğini kontrol et
+  isServerReachable()
+    .then(reachable => {
+      // Sunucu erişilemez durumdaysa
+      if (!reachable) {
+        // Sunucu erişilemez durumu değiştiyse
+        if (!db.server.unreachable) {
+          if (!CONFIG.DISABLE_UNREACHABLE_FOUND_MESSAGES) {
+            sendMessage("❌ **Sunucuya erişilemiyor!**");
+          }
+          db.server.unreachable = true;
+          fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
 
-  getDataFromAPI()
-    .then((rawData) => {
-      // Renk kodu düzeltme işlemini uygula
-      if (
-        rawData &&
-        rawData.serverData &&
-        typeof rawData.serverData === "string"
-      ) {
-        rawData.serverData = fixColorCodes(rawData.serverData);
-      }
-      if (
-        rawData &&
-        rawData.careerSaveGameData &&
-        typeof rawData.careerSaveGameData === "string"
-      ) {
-        rawData.careerSaveGameData = fixColorCodes(rawData.careerSaveGameData);
-      }
+          // Bot durumunu güncelle
+          client.user.setActivity("Sunucu Erişilemez", { type: "WATCHING" });
+          client.user.setStatus("dnd");
 
-      const previouslyUnreachable = db.server.unreachable;
-      const previousServer = db.server;
-      const previousMods = db.mods;
-      const previousCareerSavegame = db.careerSavegame;
-
-      const data = parseData(rawData, previousServer);
-
-      // Sunucu erişilebilirlik durumu değiştiyse
-      if (previouslyUnreachable && data) {
-        if (!CONFIG.DISABLE_UNREACHABLE_FOUND_MESSAGES) {
-          sendMessage("");
+          // Sunucu çevrimdışı durumu değiştiyse
+          if (db.server.online) {
+            sendServerStatusMessage("offline", CONFIG.UPDATE_CHANNEL_ID);
+            db.server.online = false;
+            fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+          }
         }
-        db.server.unreachable = false;
-        fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+        
+        // Player activity kontrolü yapma ve devam etme
+        return;
       }
 
-      // Sunucu durumu değiştiyse
-      if (data) {
-        const updateString = getUpdateString(
-          data,
-          previousServer,
-          previousMods,
-          previousCareerSavegame
-        );
+      // Sunucu erişilebilir ise oyuncu aktivitesini kontrol et
+      checkPlayerJoinLeave();
 
-        // Sadece değişiklik varsa mesaj gönder
-        if (updateString) {
-          sendMessage(updateString);
-        }
+      // Ve server verisini çek
+      getDataFromAPI()
+        .then((rawData) => {
+          // Renk kodu düzeltme işlemini uygula
+          if (
+            rawData &&
+            rawData.serverData &&
+            typeof rawData.serverData === "string"
+          ) {
+            rawData.serverData = fixColorCodes(rawData.serverData);
+          }
+          if (
+            rawData &&
+            rawData.careerSaveGameData &&
+            typeof rawData.careerSaveGameData === "string"
+          ) {
+            rawData.careerSaveGameData = fixColorCodes(rawData.careerSaveGameData);
+          }
 
-        // Sunucu çevrimiçi durumu değiştiyse
-        if (data.server.online !== previousServer.online) {
-          sendServerStatusMessage(
-            data.server.online ? "online" : "offline",
-            CONFIG.UPDATE_CHANNEL_ID
-          );
-        }
+          const previouslyUnreachable = db.server.unreachable;
+          const previousServer = db.server;
+          const previousMods = db.mods;
+          const previousCareerSavegame = db.careerSavegame;
 
-        // Veritabanını güncelle
-        db = data;
-        fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+          const data = parseData(rawData, previousServer);
 
-        // Bot durumunu güncelle
-        client.user.setActivity("Farming Simulator 25");
-        client.user.setStatus("online");
-      } else {
-        // Sunucu çevrimdışı durumu değiştiyse
-        if (previousServer.online) {
-          sendServerStatusMessage("offline", CONFIG.UPDATE_CHANNEL_ID);
-        }
+          // Sunucu erişilebilirlik durumu değiştiyse
+          if (previouslyUnreachable && data) {
+            if (!CONFIG.DISABLE_UNREACHABLE_FOUND_MESSAGES) {
+              sendMessage("✅ **Sunucuya erişim sağlandı!**");
+            }
+            db.server.unreachable = false;
+            fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+          }
 
-        db.server.online = false;
-        db.server.unreachable = false;
-        fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+          // Sunucu durumu değiştiyse
+          if (data) {
+            const updateString = getUpdateString(
+              data,
+              previousServer,
+              previousMods,
+              previousCareerSavegame
+            );
 
-        // Bot durumunu güncelle
-        client.user.setActivity("Sunucu erişilemez", { type: "WATCHING" });
-        client.user.setStatus("dnd");
-      }
+            // Sadece değişiklik varsa mesaj gönder
+            if (updateString) {
+              sendMessage(updateString);
+            }
+
+            // Sunucu çevrimiçi durumu değiştiyse
+            if (data.server.online !== previousServer.online) {
+              sendServerStatusMessage(
+                data.server.online ? "online" : "offline",
+                CONFIG.UPDATE_CHANNEL_ID
+              );
+            }
+
+            // Veritabanını güncelle
+            db = data;
+            fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+
+            // Bot durumunu güncelle
+            client.user.setActivity("Farming Simulator 25");
+            client.user.setStatus("online");
+          } else {
+            // Sunucu çevrimdışı durumu değiştiyse
+            if (previousServer.online) {
+              sendServerStatusMessage("offline", CONFIG.UPDATE_CHANNEL_ID);
+            }
+
+            db.server.online = false;
+            db.server.unreachable = false;
+            fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+
+            // Bot durumunu güncelle
+            client.user.setActivity("Sunucu Çevrimdışı", { type: "WATCHING" });
+            client.user.setStatus("dnd");
+          }
+        })
+        .catch((e) => {
+          console.error("❌ Sunucu verisi alınırken hata:", e.message);
+          client.user.setActivity("Bakım Altında");
+
+          // Sunucu erişilemez durumu değiştiyse
+          if (!db.server.unreachable) {
+            if (!CONFIG.DISABLE_UNREACHABLE_FOUND_MESSAGES) {
+              sendMessage("⚠️ **Sunucu verisi alınamıyor!**");
+            }
+            db.server.unreachable = true;
+            fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+          }
+        });
     })
-    .catch((e) => {
-      console.error("❌ Sunucu verisi alınırken hata:", e.message);
-      client.user.setActivity("Bakım Altında");
-
-      // Sunucu erişilemez durumu değiştiyse
-      if (!db.server.unreachable) {
-        if (!CONFIG.DISABLE_UNREACHABLE_FOUND_MESSAGES) {
-          sendMessage("");
-        }
-        db.server.unreachable = true;
-        fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
-      }
+    .catch(error => {
+      console.error("❌ Sunucu kontrol işleminde hata:", error.message);
     });
 
   attemptPurge();
