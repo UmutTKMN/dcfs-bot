@@ -25,7 +25,7 @@ const CONFIG = {
   RESTART_DELAY_MS: getConfig.number('FS25_BOT_WATCHDOG_RESTART_DELAY_MS', 5000),   // Yeniden başlatmadan önce 5 saniye bekle
   MAX_CRASHES: getConfig.number('FS25_BOT_WATCHDOG_MAX_CRASHES', 10),          // Vazgeçmeden önce maksimum çökme sayısı
   CRASH_RESET_TIME_MS: getConfig.number('FS25_BOT_WATCHDOG_CRASH_RESET_TIME_MS', 3600000), // 1 saat stabil çalıştıktan sonra çökme sayacını sıfırla
-  LOG_DIR: getConfig.string('FS25_BOT_LOG_DIR', path.join(__dirname, 'logs')),
+  LOG_DIR: getConfig.string('FS25_BOT_LOG_DIR', path.join(__dirname, 'watchdog')),
 };
 
 // Durum değişkenleri
