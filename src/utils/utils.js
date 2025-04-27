@@ -4,6 +4,7 @@ if (process.env.FS25_BOT_DISABLE_CERTIFICATE_VERIFICATION === "true") {
 
 const _ = require("lodash");
 const convert = require("xml-js");
+const axios = require("axios");
 const fetch = require("fetch-retry")(global.fetch);
 
 const ConfigUtils = {
@@ -24,6 +25,38 @@ const ConfigUtils = {
 
 const retries = ConfigUtils.getNumber("FS25_BOT_FETCH_RETRIES", 3, 1);
 const retryDelay = ConfigUtils.getNumber("FS25_BOT_FETCH_RETRY_DELAY_MS", 2000, 1);
+const httpTimeout = ConfigUtils.getNumber("FS25_BOT_HTTP_TIMEOUT", 30000, 5000);
+
+// Axios istek yeniden deneme yardımcı fonksiyonu
+const axiosRetryHelper = async (url, options = {}, maxRetries = 3, retryDelay = 2000) => {
+  let lastError = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await axios.get(url, options);
+    } catch (error) {
+      lastError = error;
+      
+      // Socket hang up, ETIMEDOUT, ECONNREFUSED gibi hataları kontrol et
+      const isNetworkError = !error.response && (
+        error.code === 'ECONNABORTED' || 
+        error.code === 'ETIMEDOUT' || 
+        error.code === 'ECONNREFUSED' ||
+        error.message.includes('socket hang up')
+      );
+      
+      if (isNetworkError && attempt < maxRetries) {
+        console.log(`⚠️ Bağlantı hatası, yeniden deneniyor (${attempt}/${maxRetries}): ${error.message}`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        continue;
+      }
+      
+      throw error;
+    }
+  }
+  
+  throw lastError;
+};
 
 const utils = {
   getDefaultDatabase: () =>
@@ -60,7 +93,64 @@ const utils = {
     return `${string}${remainingMinutes} dakika`;
   },
 
-  getDataFromAPI: () =>
+  getDataFromAPI: async () => {
+    try {
+      // Her iki URL için aynı anda istek gönder
+      const [serverResponse, careerResponse] = await Promise.all([
+        axiosRetryHelper(
+          process.env.FS25_BOT_URL_SERVER_STATS, 
+          { 
+            timeout: httpTimeout,
+            headers: { 'Cache-Control': 'no-cache' }
+          },
+          retries,
+          retryDelay
+        ),
+        axiosRetryHelper(
+          process.env.FS25_BOT_URL_CAREER_SAVEGAME,
+          { 
+            timeout: httpTimeout,
+            headers: { 'Cache-Control': 'no-cache' }
+          },
+          retries,
+          retryDelay
+        )
+      ]);
+      
+      // XML'leri işle
+      const serverStatsXml = serverResponse.data;
+      const careerSavegameXml = careerResponse.data;
+      
+      return {
+        serverStats: JSON.parse(
+          convert.xml2json(serverStatsXml, { compact: true })
+        ),
+        careerSavegame: JSON.parse(
+          convert.xml2json(careerSavegameXml, { compact: true })
+        ),
+      };
+    } catch (error) {
+      console.error("❌ Sunucu verisi alınırken hata:", error.message);
+      if (error.code) {
+        console.error(`    Hata kodu: ${error.code}`);
+      }
+      if (error.message.includes('socket hang up')) {
+        console.error("    Socket hang up hatası - Sunucu bağlantıyı kapattı veya network sorunu var");
+      }
+      
+      // Fallback olarak eski fetch metodunu kullan
+      console.log("⚠️ Fetch-retry fallback'e geçiliyor...");
+      try {
+        return await utils._getDataFromAPIFallback();
+      } catch (fallbackError) {
+        console.error("❌ Fallback metodu da başarısız:", fallbackError.message);
+        throw error; // Orijinal hatayı fırlat
+      }
+    }
+  },
+  
+  // Eski fetch bazlı veri çekme metodu (fallback olarak kullanılacak)
+  _getDataFromAPIFallback: () =>
     Promise.all([
       fetch(process.env.FS25_BOT_URL_SERVER_STATS, {
         retries,

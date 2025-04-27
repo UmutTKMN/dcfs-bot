@@ -56,12 +56,44 @@ const CONFIG = {
     process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES === "true",
   PURGE_ON_STARTUP:
     process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_ON_STARTUP === "true",
-  HTTP_TIMEOUT: parseInt(process.env.FS25_BOT_HTTP_TIMEOUT, 10) || 15000, // 15 saniye varsayılan timeout
+  HTTP_TIMEOUT: parseInt(process.env.FS25_BOT_HTTP_TIMEOUT, 10) || 30000, // 30 saniye varsayılan timeout
+  CONNECTION_RETRY: parseInt(process.env.FS25_BOT_CONNECTION_RETRY, 10) || 3, // Bağlantı hatası durumunda yeniden deneme sayısı
 };
 
 // HTTP istek yapılandırması
 axios.defaults.timeout = CONFIG.HTTP_TIMEOUT;
 axios.defaults.maxRedirects = 5;
+
+// Axios istek yeniden deneme mekanizması
+const axiosRetry = async (url, options = {}, maxRetries = 3, retryDelay = 2000) => {
+  let lastError = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await axios.get(url, options);
+    } catch (error) {
+      lastError = error;
+      
+      // Socket hang up, ETIMEDOUT, ECONNREFUSED gibi hataları kontrol et
+      const isNetworkError = !error.response && (
+        error.code === 'ECONNABORTED' || 
+        error.code === 'ETIMEDOUT' || 
+        error.code === 'ECONNREFUSED' ||
+        error.message.includes('socket hang up')
+      );
+      
+      if (isNetworkError && attempt < maxRetries) {
+        console.log(`⚠️ Bağlantı hatası, yeniden deneniyor (${attempt}/${maxRetries}): ${error.message}`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        continue;
+      }
+      
+      throw error;
+    }
+  }
+  
+  throw lastError;
+};
 
 // State variables
 let intervalTimer = null;
@@ -256,10 +288,11 @@ async function checkPlayerJoinLeave() {
 // Fetch player data from server stats XML
 async function fetchUptimeData() {
   try {
-    const response = await axios.get(CONFIG.SERVER_STATS_URL, {
-      timeout: 10000, // 10 saniye timeout ekleyelim
-      maxRetries: 3,  // Yeniden deneme sayısı
-    });
+    // Retry mekanizması ile sunucuya bağlan
+    const response = await axiosRetry(CONFIG.SERVER_STATS_URL, {
+      timeout: CONFIG.HTTP_TIMEOUT,
+      headers: { 'Cache-Control': 'no-cache' }
+    }, CONFIG.CONNECTION_RETRY, 3000);
     
     if (!response || !response.data) {
       console.log("⚠️ Sunucudan boş yanıt alındı");
@@ -290,6 +323,9 @@ async function fetchUptimeData() {
     return { serverName, activePlayers };
   } catch (error) {
     console.error("❌ Çalışma süresi verisi alınırken hata:", error.message);
+    if (error.code) {
+      console.error(`    Hata kodu: ${error.code}`);
+    }
     // Hata durumunda boş bir liste dönelim
     return { serverName: "Bilinmeyen Sunucu", activePlayers: [] };
   }
@@ -537,9 +573,12 @@ const attemptPurge = () => {
 // Sunucu erişilebilirlik kontrolü için yardımcı fonksiyon
 async function isServerReachable() {
   try {
-    const response = await axios.get(CONFIG.SERVER_STATS_URL, {
+    // Retry mekanizması ile sunucuya bağlan
+    const response = await axiosRetry(CONFIG.SERVER_STATS_URL, {
       timeout: CONFIG.HTTP_TIMEOUT / 2, // Daha kısa timeout ile hızlı kontrol
-    });
+      headers: { 'Cache-Control': 'no-cache' }
+    }, CONFIG.CONNECTION_RETRY, 1000);
+    
     return response && response.status === 200;
   } catch (error) {
     console.error(`❌ Sunucu erişilebilirlik kontrolü başarısız: ${error.message}`);
@@ -611,9 +650,6 @@ const update = () => {
 
           // Sunucu erişilebilirlik durumu değiştiyse
           if (previouslyUnreachable && data) {
-            if (!CONFIG.DISABLE_UNREACHABLE_FOUND_MESSAGES) {
-              sendMessage("✅ **Sunucuya erişim sağlandı!**");
-            }
             db.server.unreachable = false;
             fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
           }
@@ -630,14 +666,6 @@ const update = () => {
             // Sadece değişiklik varsa mesaj gönder
             if (updateString) {
               sendMessage(updateString);
-            }
-
-            // Sunucu çevrimiçi durumu değiştiyse
-            if (data.server.online !== previousServer.online) {
-              sendServerStatusMessage(
-                data.server.online ? "online" : "offline",
-                CONFIG.UPDATE_CHANNEL_ID
-              );
             }
 
             // Veritabanını güncelle
