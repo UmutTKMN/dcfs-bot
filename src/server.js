@@ -53,12 +53,9 @@ const CONFIG = {
   DAILY_STATS_HOUR: parseInt(process.env.FS25_BOT_DAILY_STATS_HOUR, 10) || 17,
   DAILY_STATS_MINUTE:
     parseInt(process.env.FS25_BOT_DAILY_STATS_MINUTE, 10) || 0,
-  DISABLE_SAVEGAME_MESSAGES:
-    process.env.FS25_BOT_DISABLE_SAVEGAME_MESSAGES === "true",
-  DISABLE_UNREACHABLE_FOUND_MESSAGES:
-    process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES === "true",
-  PURGE_ON_STARTUP:
-    process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_ON_STARTUP === "true",
+  DISABLE_SAVEGAME_MESSAGES: process.env.FS25_BOT_DISABLE_SAVEGAME_MESSAGES === "true",
+  DISABLE_UNREACHABLE_FOUND_MESSAGES: process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES === "true",
+  PURGE_ON_STARTUP: process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_ON_STARTUP === "true",
 };
 
 // State variables
@@ -1009,14 +1006,24 @@ client.on("ready", async () => {
 
 // Slash komutlarını dinle
 client.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-  const command = client.commands.get(interaction.commandName);
-  if (!command) return;
-  try {
-    await command.execute(interaction);
-  } catch (error) {
-    console.error(error);
-    await interaction.reply({ content: 'Komut çalıştırılırken bir hata oluştu.', ephemeral: true });
+  if (interaction.isChatInputCommand()) {
+    const command = client.commands.get(interaction.commandName);
+    if (!command) return;
+    try {
+      await command.execute(interaction);
+    } catch (error) {
+      console.error(error);
+      await interaction.reply({ content: 'Komut çalıştırılırken bir hata oluştu.', ephemeral: true });
+    }
+  } else if (interaction.isStringSelectMenu() && interaction.customId === 'temizle_menu') {
+    // Sadece komutu kullanan kişi seçim yapabilsin
+    if (interaction.user.id !== interaction.message.interaction.user.id) {
+      return interaction.reply({ content: 'Bu menüyü sadece komutu kullanan kişi kullanabilir.', ephemeral: true });
+    }
+    const command = client.commands.get('temizle');
+    if (command && typeof command.handleSelect === 'function') {
+      await command.handleSelect(interaction);
+    }
   }
 });
 
