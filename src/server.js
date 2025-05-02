@@ -11,7 +11,10 @@ const {
   GatewayIntentBits,
   PermissionsBitField,
   ChannelType,
-  EmbedBuilder
+  EmbedBuilder,
+  Collection,
+  REST,
+  Routes
 } = require("discord.js");
 const { onExit } = require("signal-exit");
 require("dotenv-flow").config({
@@ -74,6 +77,36 @@ const client = new Client({
     GatewayIntentBits.GuildVoiceStates,
   ],
 });
+
+// Slash komutları için koleksiyon oluştur
+client.commands = new Collection();
+
+// Komutları src/commands klasöründen yükle
+const commandsPath = path.join(__dirname, 'commands');
+if (fs.existsSync(commandsPath)) {
+  const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+  for (const file of commandFiles) {
+    const command = require(path.join(commandsPath, file));
+    if (command.data && command.execute) {
+      client.commands.set(command.data.name, command);
+    }
+  }
+}
+
+// Slash komutlarını Discord API'ye yükle
+async function registerSlashCommands() {
+  const rest = new REST({ version: '10' }).setToken(CONFIG.DISCORD_TOKEN);
+  const commands = [...client.commands.values()].map(cmd => cmd.data.toJSON());
+  try {
+    await rest.put(
+      Routes.applicationCommands(process.env.FS25_BOT_CLIENT_ID),
+      { body: commands },
+    );
+    console.log('✅ Slash komutları başarıyla yüklendi.');
+  } catch (error) {
+    console.error('❌ Slash komutları yüklenirken hata:', error);
+  }
+}
 
 /**
  * PLAYER ACTIVITY LOGGING
@@ -970,6 +1003,21 @@ client.on("ready", async () => {
   intervalTimer = setInterval(update, CONFIG.POLL_INTERVAL_MINUTES * 60000);
 
   startHeartbeat();
+
+  await registerSlashCommands();
+});
+
+// Slash komutlarını dinle
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+  const command = client.commands.get(interaction.commandName);
+  if (!command) return;
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(error);
+    await interaction.reply({ content: 'Komut çalıştırılırken bir hata oluştu.', ephemeral: true });
+  }
 });
 
 // Warning event
