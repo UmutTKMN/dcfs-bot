@@ -1,0 +1,8 @@
+# .dockerignore
+node_modules
+data/*.json
+logs/*.log
+debug-bot.bat
+start-bot.bat
+update.txt
+*.md

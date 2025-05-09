@@ -480,6 +480,75 @@ const getUpdateString = (
   return string.trim() || null;
 };
 
+// Yeni: Embed ile güncelleme mesajı oluşturucu
+const getUpdateEmbed = (
+  newData,
+  previousServer,
+  previousMods,
+  previousCareerSavegame
+) => {
+  if (!newData) return null;
+
+  const fields = [];
+  const previousDlcCount = Object.values(previousMods).filter(({ name: modName }) => modName.startsWith("pdlc_")).length;
+  const previousModCount = Object.values(previousMods).filter(({ name: modName }) => !modName.startsWith("pdlc_")).length;
+  const dlcCount = Object.values(newData.mods).filter(({ name: modName }) => modName.startsWith("pdlc_")).length;
+  const modCount = Object.values(newData.mods).filter(({ name: modName }) => !modName.startsWith("pdlc_")).length;
+  const { game, version, name: serverName, mapName } = newData.server;
+
+  // Sunucu bilgileri değiştiyse
+  const dlcString = getModString(newData, previousMods, true);
+  const modString = getModString(newData, previousMods, false);
+  if (
+    (!!game && game !== previousServer.game) ||
+    (!!version && version !== previousServer.version) ||
+    (!!serverName && serverName !== previousServer.name) ||
+    (!!mapName && mapName !== previousServer.mapName) ||
+    !!dlcString ||
+    !!modString
+  ) {
+    fields.push({
+      name: `🖥️ Sunucu Bilgisi`,
+      value: `**${serverName}**\n**${game}** *(${version})*\n**Harita:** ${mapName} **DLC**: *${dlcCount}*, **Mod**: *${modCount}*`,
+      inline: false
+    });
+    if (dlcString) fields.push({ name: 'DLC Değişiklikleri', value: dlcString, inline: false });
+    if (modString) fields.push({ name: 'Mod Değişiklikleri', value: modString, inline: false });
+  }
+
+  // Finansal değişiklikler
+  if (!CONFIG.DISABLE_SAVEGAME_MESSAGES) {
+    const { money, playTime } = newData.careerSavegame;
+    if (previousCareerSavegame.money !== money) {
+      let moneyDifferenceSign = '';
+      const moneyDifferenceAbsolute = Math.abs(money - previousCareerSavegame.money);
+      if (money > previousCareerSavegame.money) moneyDifferenceSign = '+';
+      if (money < previousCareerSavegame.money) moneyDifferenceSign = '-';
+      fields.push({
+        name: '<a:MoneySoaring:1319029763398041772> Finans Hareketleri',
+        value: `**${money.toLocaleString('en-GB')} (${moneyDifferenceSign}${moneyDifferenceAbsolute.toLocaleString('en-GB')})**`,
+        inline: false
+      });
+    }
+    if (previousCareerSavegame.playTime !== playTime) {
+      fields.push({
+        name: '<a:pixel_clock:1319030004411273297> Geçirilen Zaman',
+        value: `*${formatMinutes(playTime)}*`,
+        inline: false
+      });
+    }
+  }
+
+  if (fields.length === 0) return null;
+
+  const embed = new EmbedBuilder()
+    .setColor('#0099ff')
+    .setTitle('Sunucu Güncellemesi')
+    .addFields(fields)
+    .setTimestamp();
+  return embed;
+};
+
 // Send message to appropriate Discord channels
 const sendMessage = (message) => {
   if (!message) return;
@@ -502,12 +571,23 @@ const sendMessage = (message) => {
     )
     .forEach((channel) => {
       console.log(`Mesaj gönderiliyor: ${channel.guild.name}: ${channel.name}`);
-      channel.send(message).catch((error) => {
-        console.error(
-          `❌ ${channel.name} kanalına mesaj gönderilirken hata:`,
-          error.message
-        );
-      });
+      if (typeof message === 'object' && message.data && message.data.title) {
+        // Embed ise
+        channel.send({ embeds: [message] }).catch((error) => {
+          console.error(
+            `❌ ${channel.name} kanalına embed gönderilirken hata:`,
+            error.message
+          );
+        });
+      } else {
+        // Düz metin ise
+        channel.send(message).catch((error) => {
+          console.error(
+            `❌ ${channel.name} kanalına mesaj gönderilirken hata:`,
+            error.message
+          );
+        });
+      }
     });
 };
 
@@ -521,19 +601,27 @@ const sendServerStatusMessage = (status, channelId) => {
     return;
   }
 
-  let statusMessage = "";
-  let statusEmoji = "";
+  let statusMessage = '';
+  let statusEmoji = '';
+  let color = '#cccccc';
 
-  if (status === "online") {
-    statusEmoji = "<:2171online:1319749534204563466>";
-    statusMessage = "Sunucu çevrimiçi";
-  } else if (status === "offline") {
-    statusEmoji = "<:1006donotdisturb:1319749525283409971>";
-    statusMessage = "Sunucu çevrimdışı";
+  if (status === 'online') {
+    statusEmoji = '<:2171online:1319749534204563466>';
+    statusMessage = 'Sunucu çevrimiçi';
+    color = '#43b581';
+  } else if (status === 'offline') {
+    statusEmoji = '<:1006donotdisturb:1319749525283409971>';
+    statusMessage = 'Sunucu çevrimdışı';
+    color = '#f04747';
   }
 
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setTitle(`${statusEmoji} ${statusMessage}`)
+    .setTimestamp();
+
   console.log(`Durum mesajı gönderiliyor: ${channel.name}`);
-  channel.send(`${statusEmoji} ${statusMessage}`).catch((error) => {
+  channel.send({ embeds: [embed] }).catch((error) => {
     console.error(`❌ Durum mesajı gönderilirken hata: ${error.message}`);
   });
 };
@@ -589,32 +677,21 @@ const update = () => {
   // Önce sunucuya erişilebildiğini kontrol et
   isServerReachable()
     .then(reachable => {
-      // Sunucu erişilemez durumdaysa
       if (!reachable) {
-        // Sunucu erişilemez durumu değiştiyse
         if (!db.server.unreachable) {
           db.server.unreachable = true;
           fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
-
-          // Sunucu çevrimdışı durumu değiştiyse
           if (db.server.online) {
             sendServerStatusMessage("offline", CONFIG.UPDATE_CHANNEL_ID);
             db.server.online = false;
             fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
           }
         }
-        
-        // Player activity kontrolü yapma ve devam etme
         return;
       }
-
-      // Sunucu erişilebilir ise oyuncu aktivitesini kontrol et
       checkPlayerJoinLeave();
-
-      // Ve server verisini çek
       getDataFromAPI()
         .then((rawData) => {
-          // Renk kodu düzeltme işlemini uygula
           if (
             rawData &&
             rawData.serverData &&
@@ -637,44 +714,32 @@ const update = () => {
 
           const data = parseData(rawData, previousServer);
 
-          // Sunucu erişilebilirlik durumu değiştiyse
           if (previouslyUnreachable && data) {
             db.server.unreachable = false;
             fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
           }
 
-          // Sunucu durumu değiştiyse
           if (data) {
-            const updateString = getUpdateString(
+            const updateEmbed = getUpdateEmbed(
               data,
               previousServer,
               previousMods,
               previousCareerSavegame
             );
-
-            // Sadece değişiklik varsa mesaj gönder
-            if (updateString) {
-              sendMessage(updateString);
+            if (updateEmbed) {
+              sendMessage(updateEmbed);
             }
-
-            // Veritabanını güncelle
             db = data;
             fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
-
-            // Bot durumunu güncelle
             client.user.setActivity("Farming Simulator 25");
             client.user.setStatus("online");
           } else {
-            // Sunucu çevrimdışı durumu değiştiyse
             if (previousServer.online) {
               sendServerStatusMessage("offline", CONFIG.UPDATE_CHANNEL_ID);
             }
-
             db.server.online = false;
             db.server.unreachable = false;
             fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
-
-            // Bot durumunu güncelle
             client.user.setActivity("Sunucu Çevrimdışı", { type: "WATCHING" });
             client.user.setStatus("dnd");
           }
@@ -682,8 +747,6 @@ const update = () => {
         .catch((e) => {
           console.error("❌ Sunucu verisi alınırken hata:", e.message);
           client.user.setActivity("Bakım Altında");
-
-          // Sunucu erişilemez durumu değiştiyse
           if (!db.server.unreachable) {
             if (!CONFIG.DISABLE_UNREACHABLE_FOUND_MESSAGES) {
               sendMessage("⚠️ **Sunucu verisi alınamıyor!**");
