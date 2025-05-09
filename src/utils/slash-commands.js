@@ -13,12 +13,16 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Komutları yükle
-const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-for (const file of commandFiles) {
-  const command = require(path.join(commandsPath, file));
-  client.commands.set(command.data.name, command);
+// Komutlar artık src/commands klasöründe, yol güncellendi
+const commandsPath = path.join(__dirname, '../commands');
+if (fs.existsSync(commandsPath)) {
+  const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+  for (const file of commandFiles) {
+    const command = require(path.join(commandsPath, file));
+    if (command.data && command.execute) {
+      client.commands.set(command.data.name, command);
+    }
+  }
 }
 
 // Slash komutlarını Discord API'ye yükle
