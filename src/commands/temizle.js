@@ -21,6 +21,18 @@ module.exports = {
       ]);
     const row = new ActionRowBuilder().addComponents(menu);
     await interaction.reply({ content: 'Kaç mesaj silinsin?', components: [row], ephemeral: true });
+
+    // Menü 15 saniye sonra devre dışı bırakılır
+    setTimeout(async () => {
+      try {
+        await interaction.editReply({
+          content: 'İşlem zaman aşımına uğradı. Lütfen tekrar deneyin.',
+          components: []
+        });
+      } catch (e) {
+        // Zaten yanıtlandıysa hata oluşabilir, görmezden gel
+      }
+    }, 15000);
   },
   // Menüden seçim yapılınca çalışacak handler
   async handleSelect(interaction) {
