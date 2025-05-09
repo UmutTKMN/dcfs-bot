@@ -65,6 +65,9 @@ let nextPurge = 0;
 let lastUptimeUpdateTime = Date.now();
 let previousActivePlayers = new Set(); // Son kontrol edilen aktif oyuncu listesi
 
+// Kullanıcı oyun süresi takibi için giriş zamanlarını tutan nesne
+const playerSessionStartTimes = {}
+
 // Initialize Discord client with all necessary intents
 const client = new Client({
   intents: [
@@ -136,6 +139,41 @@ function logPlayerActivity(playerName, action) {
   }
 }
 
+// Yeni: Oyuncu giriş/çıkış embed mesajı oluşturucu
+function sendPlayerActivityEmbed(playerName, action, durationMs = null) {
+  if (!CONFIG.PLAYER_ACTIVITY_CHANNEL_ID) return;
+  const channel = client.channels.cache.get(CONFIG.PLAYER_ACTIVITY_CHANNEL_ID);
+  if (!channel) return;
+
+  let color = action === 'join' ? '#43b581' : '#f04747';
+  let emoji = action === 'join' ? '<:2171online:1319749534204563466>' : '<:1006donotdisturb:1319749525283409971>';
+  let title = action === 'join' ? `${emoji} ${playerName} sunucuya katıldı!` : `${emoji} ${playerName} sunucudan ayrıldı!`;
+  let description = '';
+
+  if (action === 'leave' && durationMs) {
+    // Süreyi saat/dakika olarak göster
+    const totalSeconds = Math.floor(durationMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    let sureStr = '';
+    if (hours > 0) sureStr += `${hours} saat `;
+    if (minutes > 0) sureStr += `${minutes} dakika `;
+    if (hours === 0 && minutes === 0) sureStr += `${seconds} saniye`;
+    description = `⏱️ Oturum süresi: **${sureStr.trim()}**`;
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setTitle(title)
+    .setTimestamp();
+  if (description) embed.setDescription(description);
+
+  channel.send({ embeds: [embed] }).catch((error) => {
+    console.error(`❌ Oyuncu aktivite embed mesajı gönderilirken hata: ${error.message}`);
+  });
+}
+
 // Bugünkü log dosyasını okuyan yardımcı fonksiyon
 function getTodayPlayerActivityLogs() {
   try {
@@ -183,83 +221,60 @@ const sendPlayerActivityMessage = (message) => {
 async function checkPlayerJoinLeave() {
   try {
     const result = await fetchUptimeData();
-    
-    // Result veya activePlayers null/undefined ise boş bir liste kullan
     const activePlayers = result?.activePlayers || [];
-    
-    // Get current active player names - Hatalı verileri filtrele
     const currentActivePlayerNames = new Set(
-      activePlayers
-        .filter(player => player && player._)  // undefined veya null olan player._'leri filtrele
-        .map(player => player._)
+      activePlayers.filter(player => player && player._).map(player => player._)
     );
-    
+
     // İlk çalıştırma kontrolü
     if (previousActivePlayers.size === 0) {
-      console.log("İlk çalıştırma: Oyuncu listesi kaydediliyor");
       previousActivePlayers = currentActivePlayerNames;
       return;
     }
-    
+
     // Find players who joined (in current but not in previous)
     const joinedPlayers = [...currentActivePlayerNames].filter(
       player => !previousActivePlayers.has(player)
     );
-    
     // Find players who left (in previous but not in current)
     const leftPlayers = [...previousActivePlayers].filter(
       player => !currentActivePlayerNames.has(player)
     );
-    
+
     // Çok fazla değişiklik varsa muhtemelen bir bağlantı kesintisi olmuştur
     const totalChanges = joinedPlayers.length + leftPlayers.length;
     if (totalChanges > 5) {
-      console.warn(`⚠️ Bir defada ${totalChanges} oyuncu değişikliği tespit edildi, muhtemelen sunucu yeniden başlatıldı veya bağlantı kesintisi oldu.`);
-      
-      // Sadece logla ama bildirim gönderme
-      if (joinedPlayers.length > 0) {
-        console.log(`ℹ️ Toplu giriş tespit edildi: ${joinedPlayers.join(', ')}`);
-      }
-      if (leftPlayers.length > 0) {
-        console.log(`ℹ️ Toplu çıkış tespit edildi: ${leftPlayers.join(', ')}`);
-      }
-      
-      // Oyuncu listesini güncelleyip çık
       previousActivePlayers = currentActivePlayerNames;
       return;
     }
-    
-    // Send join notifications
+
+    // Giriş yapanlar için sayaç başlat
     for (const player of joinedPlayers) {
       try {
-        const joinMessage = `<:2171online:1319749534204563466> **${player}** sunucuya katıldı!`;
-        sendPlayerActivityMessage(joinMessage);
-        console.log(`✅ Oyuncu giriş bildirimi: ${player}`);
-        
-        // Oyuncu girişini logla
+        playerSessionStartTimes[player] = Date.now();
+        sendPlayerActivityEmbed(player, 'join');
         logPlayerActivity(player, 'join');
       } catch (notifyError) {
         console.error(`❌ Oyuncu giriş bildirimi gönderilirken hata (${player}):`, notifyError.message);
       }
     }
-    
-    // Send leave notifications
+
+    // Çıkanlar için süreyi hesapla ve embed gönder
     for (const player of leftPlayers) {
       try {
-        const leaveMessage = `<:1006donotdisturb:1319749525283409971> **${player}** sunucudan ayrıldı!`;
-        sendPlayerActivityMessage(leaveMessage);
-        console.log(`👋 Oyuncu çıkış bildirimi: ${player}`);
-        
-        // Oyuncu çıkışını logla
+        let duration = null;
+        if (playerSessionStartTimes[player]) {
+          duration = Date.now() - playerSessionStartTimes[player];
+          delete playerSessionStartTimes[player];
+        }
+        sendPlayerActivityEmbed(player, 'leave', duration);
         logPlayerActivity(player, 'leave');
       } catch (notifyError) {
         console.error(`❌ Oyuncu çıkış bildirimi gönderilirken hata (${player}):`, notifyError.message);
       }
     }
-    
-    // Update previous player list
+
     previousActivePlayers = currentActivePlayerNames;
-    
   } catch (error) {
     console.error("❌ Oyuncu giriş/çıkış kontrolü sırasında hata:", error.message);
     if (error.stack) {
@@ -480,7 +495,7 @@ const getUpdateString = (
   return string.trim() || null;
 };
 
-// Yeni: Embed ile güncelleme mesajı oluşturucu
+// Yeni: Embed ile güncelleme mesajı oluşturucu (renkli)
 const getUpdateEmbed = (
   newData,
   previousServer,
@@ -490,6 +505,9 @@ const getUpdateEmbed = (
   if (!newData) return null;
 
   const fields = [];
+  let hasServerChange = false;
+  let hasFinanceOrTimeChange = false;
+
   const previousDlcCount = Object.values(previousMods).filter(({ name: modName }) => modName.startsWith("pdlc_")).length;
   const previousModCount = Object.values(previousMods).filter(({ name: modName }) => !modName.startsWith("pdlc_")).length;
   const dlcCount = Object.values(newData.mods).filter(({ name: modName }) => modName.startsWith("pdlc_")).length;
@@ -507,6 +525,7 @@ const getUpdateEmbed = (
     !!dlcString ||
     !!modString
   ) {
+    hasServerChange = true;
     fields.push({
       name: `🖥️ Sunucu Bilgisi`,
       value: `**${serverName}**\n**${game}** *(${version})*\n**Harita:** ${mapName} **DLC**: *${dlcCount}*, **Mod**: *${modCount}*`,
@@ -520,6 +539,7 @@ const getUpdateEmbed = (
   if (!CONFIG.DISABLE_SAVEGAME_MESSAGES) {
     const { money, playTime } = newData.careerSavegame;
     if (previousCareerSavegame.money !== money) {
+      hasFinanceOrTimeChange = true;
       let moneyDifferenceSign = '';
       const moneyDifferenceAbsolute = Math.abs(money - previousCareerSavegame.money);
       if (money > previousCareerSavegame.money) moneyDifferenceSign = '+';
@@ -531,6 +551,7 @@ const getUpdateEmbed = (
       });
     }
     if (previousCareerSavegame.playTime !== playTime) {
+      hasFinanceOrTimeChange = true;
       fields.push({
         name: '<a:pixel_clock:1319030004411273297> Geçirilen Zaman',
         value: `*${formatMinutes(playTime)}*`,
@@ -541,8 +562,12 @@ const getUpdateEmbed = (
 
   if (fields.length === 0) return null;
 
+  // Renk seçimi
+  let color = '#0099ff'; // Varsayılan: finans/zaman
+  if (hasServerChange) color = '#ff9900'; // Mod/dlc/map değişikliği varsa turuncu
+
   const embed = new EmbedBuilder()
-    .setColor('#0099ff')
+    .setColor(color)
     .setTitle('Sunucu Güncellemesi')
     .addFields(fields)
     .setTimestamp();
