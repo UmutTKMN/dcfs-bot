@@ -11,19 +11,23 @@ const ConfigUtils = {
     const value = parseInt(process.env[envVar], 10) || defaultValue;
     return minValue !== null ? Math.max(value, minValue) : value;
   },
-  
+
   getString: (envVar, defaultValue = "") => {
     return process.env[envVar] || defaultValue;
   },
-  
+
   getBoolean: (envVar, defaultValue = false) => {
     if (process.env[envVar] === undefined) return defaultValue;
     return process.env[envVar] === "true";
-  }
+  },
 };
 
 const retries = ConfigUtils.getNumber("FS25_BOT_FETCH_RETRIES", 3, 1);
-const retryDelay = ConfigUtils.getNumber("FS25_BOT_FETCH_RETRY_DELAY_MS", 2000, 1);
+const retryDelay = ConfigUtils.getNumber(
+  "FS25_BOT_FETCH_RETRY_DELAY_MS",
+  2000,
+  1
+);
 
 const utils = {
   getDefaultDatabase: () =>
@@ -232,8 +236,8 @@ const utils = {
    * @return {string} - Düzeltilmiş metin
    */
   fixColorCodes: (str) => {
-    if (!str || typeof str !== 'string') return str;
-    
+    if (!str || typeof str !== "string") return str;
+
     // 5 karakterli HEX renk kodlarını 6 karakterli formata dönüştür (#24a5b -> #24a5b0)
     return str.replace(/#([0-9a-fA-F]{5})\b/g, (match, p1) => {
       console.log(`⚠️ Geçersiz renk kodu düzeltiliyor: ${match} -> #${p1}0`);

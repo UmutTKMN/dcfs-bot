@@ -1,7 +1,5 @@
 #! /usr/bin/env node
 
-const _ = require("lodash");
-const merge = require("deepmerge");
 const fs = require("fs");
 const path = require("path");
 const fetch = require("fetch-retry")(global.fetch);
@@ -14,7 +12,7 @@ const {
   EmbedBuilder,
   Collection,
   REST,
-  Routes
+  Routes,
 } = require("discord.js");
 const { onExit } = require("signal-exit");
 require("dotenv-flow").config({
@@ -30,9 +28,6 @@ const {
   getModString,
   fixColorCodes,
 } = require("./utils/utils");
-const updateModule = require("./utils/update");
-const watchdog = require("./utils/watchdog");
-const slashCommands = require("./utils/slash-commands");
 
 // Environment variables - Standardized names
 const CONFIG = {
@@ -55,9 +50,12 @@ const CONFIG = {
   DAILY_STATS_HOUR: parseInt(process.env.FS25_BOT_DAILY_STATS_HOUR, 10) || 17,
   DAILY_STATS_MINUTE:
     parseInt(process.env.FS25_BOT_DAILY_STATS_MINUTE, 10) || 0,
-  DISABLE_SAVEGAME_MESSAGES: process.env.FS25_BOT_DISABLE_SAVEGAME_MESSAGES === "true",
-  DISABLE_UNREACHABLE_FOUND_MESSAGES: process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES === "true",
-  PURGE_ON_STARTUP: process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_ON_STARTUP === "true",
+  DISABLE_SAVEGAME_MESSAGES:
+    process.env.FS25_BOT_DISABLE_SAVEGAME_MESSAGES === "true",
+  DISABLE_UNREACHABLE_FOUND_MESSAGES:
+    process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES === "true",
+  PURGE_ON_STARTUP:
+    process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_ON_STARTUP === "true",
 };
 
 // State variables
@@ -67,7 +65,7 @@ let lastUptimeUpdateTime = Date.now();
 let previousActivePlayers = new Set(); // Son kontrol edilen aktif oyuncu listesi
 
 // Kullanıcı oyun süresi takibi için giriş zamanlarını tutan nesne
-const playerSessionStartTimes = {}
+const playerSessionStartTimes = {};
 
 // Initialize Discord client with all necessary intents
 const client = new Client({
@@ -83,9 +81,11 @@ const client = new Client({
 client.commands = new Collection();
 
 // Komutları src/commands klasöründen yükle
-const commandsPath = path.join(__dirname, 'commands');
+const commandsPath = path.join(__dirname, "commands");
 if (fs.existsSync(commandsPath)) {
-  const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+  const commandFiles = fs
+    .readdirSync(commandsPath)
+    .filter((file) => file.endsWith(".js"));
   for (const file of commandFiles) {
     const command = require(path.join(commandsPath, file));
     if (command.data && command.execute) {
@@ -96,16 +96,17 @@ if (fs.existsSync(commandsPath)) {
 
 // Slash komutlarını Discord API'ye yükle
 async function registerSlashCommands() {
-  const rest = new REST({ version: '10' }).setToken(CONFIG.DISCORD_TOKEN);
-  const commands = [...client.commands.values()].map(cmd => cmd.data.toJSON());
+  const rest = new REST({ version: "10" }).setToken(CONFIG.DISCORD_TOKEN);
+  const commands = [...client.commands.values()].map((cmd) =>
+    cmd.data.toJSON()
+  );
   try {
-    await rest.put(
-      Routes.applicationCommands(process.env.FS25_BOT_CLIENT_ID),
-      { body: commands },
-    );
-    console.log('✅ Slash komutları başarıyla yüklendi.');
+    await rest.put(Routes.applicationCommands(process.env.FS25_BOT_CLIENT_ID), {
+      body: commands,
+    });
+    console.log("✅ Slash komutları başarıyla yüklendi.");
   } catch (error) {
-    console.error('❌ Slash komutları yüklenirken hata:', error);
+    console.error("❌ Slash komutları yüklenirken hata:", error);
   }
 }
 
@@ -121,10 +122,12 @@ function logPlayerActivity(playerName, action) {
       fs.mkdirSync(logDir, { recursive: true });
       console.log(`✅ Log dizini oluşturuldu: ${logDir}`);
     }
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
     const logFilePath = path.join(logDir, `player_activity_${today}.log`);
-    const timestamp = new Date().toISOString().replace('T', ' ').substr(0, 19);
-    const logMessage = `[${timestamp}] ${playerName} ${action === 'join' ? 'sunucuya katıldı' : 'sunucudan ayrıldı'}\n`;
+    const timestamp = new Date().toISOString().replace("T", " ").substr(0, 19);
+    const logMessage = `[${timestamp}] ${playerName} ${
+      action === "join" ? "sunucuya katıldı" : "sunucudan ayrıldı"
+    }\n`;
     fs.appendFileSync(logFilePath, logMessage);
   } catch (error) {
     console.error(`❌ Oyuncu aktivitesi loglanırken hata: ${error.message}`);
@@ -134,16 +137,22 @@ function logPlayerActivity(playerName, action) {
 function sendPlayerActivityEmbed(playerName, action, durationMs = null) {
   const channel = client.channels.cache.get(CONFIG.PLAYER_ACTIVITY_CHANNEL_ID);
   if (!channel) return;
-  const color = action === 'join' ? '#43b581' : '#f04747';
-  const emoji = action === 'join' ? '<:2171online:1319749534204563466>' : '<:1006donotdisturb:1319749525283409971>';
-  const title = action === 'join' ? `${emoji} ${playerName} sunucuya katıldı!` : `${emoji} ${playerName} sunucudan ayrıldı!`;
-  let description = '';
-  if (action === 'leave' && durationMs) {
+  const color = action === "join" ? "#43b581" : "#f04747";
+  const emoji =
+    action === "join"
+      ? "<:2171online:1319749534204563466>"
+      : "<:1006donotdisturb:1319749525283409971>";
+  const title =
+    action === "join"
+      ? `${emoji} ${playerName} sunucuya katıldı!`
+      : `${emoji} ${playerName} sunucudan ayrıldı!`;
+  let description = "";
+  if (action === "leave" && durationMs) {
     const totalSeconds = Math.floor(durationMs / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-    let sureStr = '';
+    let sureStr = "";
     if (hours > 0) sureStr += `${hours} saat `;
     if (minutes > 0) sureStr += `${minutes} dakika `;
     if (hours === 0 && minutes === 0) sureStr += `${seconds} saniye`;
@@ -155,54 +164,38 @@ function sendPlayerActivityEmbed(playerName, action, durationMs = null) {
     .setTimestamp();
   if (description) embed.setDescription(description);
   channel.send({ embeds: [embed] }).catch((error) => {
-    console.error(`❌ Oyuncu aktivite embed mesajı gönderilirken hata: ${error.message}`);
+    console.error(
+      `❌ Oyuncu aktivite embed mesajı gönderilirken hata: ${error.message}`
+    );
   });
 }
 
 function getTodayPlayerActivityLogs() {
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const logFilePath = path.join(CONFIG.PLAYER_LOGS_DIR, `player_activity_${today}.log`);
-    if (!fs.existsSync(logFilePath)) return "Bugün için oyuncu aktivitesi kaydı bulunmuyor.";
-    return fs.readFileSync(logFilePath, 'utf8');
+    const today = new Date().toISOString().split("T")[0];
+    const logFilePath = path.join(
+      CONFIG.PLAYER_LOGS_DIR,
+      `player_activity_${today}.log`
+    );
+    if (!fs.existsSync(logFilePath))
+      return "Bugün için oyuncu aktivitesi kaydı bulunmuyor.";
+    return fs.readFileSync(logFilePath, "utf8");
   } catch (error) {
     console.error(`❌ Bugünkü log dosyası okunurken hata: ${error.message}`);
     return "Log dosyası okunamadı.";
   }
 }
 
-/**
- * PLAYER JOIN/LEAVE TRACKING FUNCTIONS
- */
-
-// Send player activity message to a specific channel
-const sendPlayerActivityMessage = (message) => {
-  if (!CONFIG.PLAYER_ACTIVITY_CHANNEL_ID) {
-    // Özel kanal ayarlanmamışsa normal kanallara gönder
-    sendMessage(message);
-    return;
-  }
-
-  const channel = client.channels.cache.get(CONFIG.PLAYER_ACTIVITY_CHANNEL_ID);
-  if (!channel) {
-    console.error(`❌ Oyuncu aktivite kanalı bulunamadı, ID: ${CONFIG.PLAYER_ACTIVITY_CHANNEL_ID}`);
-    // Kanal bulunamadığında normal kanallara gönder
-    sendMessage(message);
-    return;
-  }
-
-  console.log(`Oyuncu aktivite mesajı gönderiliyor: ${channel.name}`);
-  channel.send(message).catch((error) => {
-    console.error(`❌ Oyuncu aktivite mesajı gönderilirken hata: ${error.message}`);
-  });
-};
-
 // Detect player join/leave events and send notification to Discord
 async function checkPlayerJoinLeave() {
   try {
     const result = await fetchUptimeData();
     const activePlayers = result?.activePlayers || [];
-    const currentActivePlayerNames = new Set(activePlayers.filter(player => player && player._).map(player => player._));
+    const currentActivePlayerNames = new Set(
+      activePlayers
+        .filter((player) => player && player._)
+        .map((player) => player._)
+    );
 
     // İlk çalıştırma kontrolü
     if (previousActivePlayers.size === 0) {
@@ -212,11 +205,11 @@ async function checkPlayerJoinLeave() {
 
     // Find players who joined (in current but not in previous)
     const joinedPlayers = [...currentActivePlayerNames].filter(
-      player => !previousActivePlayers.has(player)
+      (player) => !previousActivePlayers.has(player)
     );
     // Find players who left (in previous but not in current)
     const leftPlayers = [...previousActivePlayers].filter(
-      player => !currentActivePlayerNames.has(player)
+      (player) => !currentActivePlayerNames.has(player)
     );
 
     // Çok fazla değişiklik varsa muhtemelen bir bağlantı kesintisi olmuştur
@@ -230,10 +223,13 @@ async function checkPlayerJoinLeave() {
     for (const player of joinedPlayers) {
       try {
         playerSessionStartTimes[player] = Date.now();
-        sendPlayerActivityEmbed(player, 'join');
-        logPlayerActivity(player, 'join');
+        sendPlayerActivityEmbed(player, "join");
+        logPlayerActivity(player, "join");
       } catch (notifyError) {
-        console.error(`❌ Oyuncu giriş bildirimi gönderilirken hata (${player}):`, notifyError.message);
+        console.error(
+          `❌ Oyuncu giriş bildirimi gönderilirken hata (${player}):`,
+          notifyError.message
+        );
       }
     }
 
@@ -245,16 +241,22 @@ async function checkPlayerJoinLeave() {
           duration = Date.now() - playerSessionStartTimes[player];
           delete playerSessionStartTimes[player];
         }
-        sendPlayerActivityEmbed(player, 'leave', duration);
-        logPlayerActivity(player, 'leave');
+        sendPlayerActivityEmbed(player, "leave", duration);
+        logPlayerActivity(player, "leave");
       } catch (notifyError) {
-        console.error(`❌ Oyuncu çıkış bildirimi gönderilirken hata (${player}):`, notifyError.message);
+        console.error(
+          `❌ Oyuncu çıkış bildirimi gönderilirken hata (${player}):`,
+          notifyError.message
+        );
       }
     }
 
     previousActivePlayers = currentActivePlayerNames;
   } catch (error) {
-    console.error("❌ Oyuncu giriş/çıkış kontrolü sırasında hata:", error.message);
+    console.error(
+      "❌ Oyuncu giriş/çıkış kontrolü sırasında hata:",
+      error.message
+    );
     if (error.stack) {
       console.error("Hata Detayları:", error.stack);
     }
@@ -273,14 +275,14 @@ async function fetchUptimeData() {
       method: "GET",
       body: null,
       retries: 3,
-      retryDelay: 1000
+      retryDelay: 1000,
     });
-    
+
     if (!response.ok) {
       console.log(`⚠️ Sunucudan hatalı yanıt: ${response.status}`);
       return { serverName: "Bilinmeyen Sunucu", activePlayers: [] };
     }
-    
+
     const textData = await response.text();
     const data = await xml2js.parseStringPromise(textData, {
       explicitArray: false,
@@ -294,7 +296,7 @@ async function fetchUptimeData() {
       console.log("⚠️ XML verisinde oyuncu bilgisi bulunamadı");
       return { serverName, activePlayers: [] };
     }
-    
+
     const playersData = data.Server.Slots.Player;
     const players = Array.isArray(playersData) ? playersData : [playersData];
 
@@ -354,7 +356,7 @@ async function updateUptimeData() {
     uptimeData.activePlayers.forEach((player) => {
       const name = player._; // Player name
       if (!name) return; // Adı olmayan oyuncuları atla
-      
+
       const currentUptime = parseInt(player.$.uptime || "0", 10); // Current uptime value
 
       // If player exists in JSON
@@ -390,88 +392,12 @@ async function updateUptimeData() {
       );
     }
   } catch (error) {
-    console.error("❌ Uptime verisi güncellenirken beklenmeyen hata:", error.message);
+    console.error(
+      "❌ Uptime verisi güncellenirken beklenmeyen hata:",
+      error.message
+    );
   }
 }
-
-/**
- * DISCORD MESSAGE FUNCTIONS
- */
-
-// Generate update message content based on changes
-const getUpdateString = (
-  newData,
-  previousServer,
-  previousMods,
-  previousCareerSavegame
-) => {
-  if (!newData) return null;
-
-  let string = "";
-
-  const previousDlcCount = Object.values(previousMods).filter(
-    ({ name: modName }) => modName.startsWith("pdlc_")
-  ).length;
-  const previousModCount = Object.values(previousMods).filter(
-    ({ name: modName }) => !modName.startsWith("pdlc_")
-  ).length;
-
-  const dlcCount = Object.values(newData.mods).filter(({ name: modName }) =>
-    modName.startsWith("pdlc_")
-  ).length;
-  const modCount = Object.values(newData.mods).filter(
-    ({ name: modName }) => !modName.startsWith("pdlc_")
-  ).length;
-
-  const { game, version, name: serverName, mapName, online } = newData.server;
-
-  // Server info changes
-  const dlcString = getModString(newData, previousMods, true);
-  const modString = getModString(newData, previousMods, false);
-
-  if (
-    (!!game && game !== previousServer.game) ||
-    (!!version && version !== previousServer.version) ||
-    (!!serverName && serverName !== previousServer.name) ||
-    (!!mapName && mapName !== previousServer.mapName) ||
-    !!dlcString ||
-    !!modString
-  ) {
-    string += `**${serverName}**\n**${game}** *(${version})*\n**Harita:** ${mapName} **DLC**: *${dlcCount}*, **Mod**: *${modCount}*\n`;
-    string += dlcString;
-    string += modString;
-  }
-
-  // Savegame changes
-  if (!CONFIG.DISABLE_SAVEGAME_MESSAGES) {
-    const { money, playTime } = newData.careerSavegame;
-    if (previousCareerSavegame.money !== money) {
-      let moneyDifferenceSign = "";
-      const moneyDifferenceAbsolute = Math.abs(
-        money - previousCareerSavegame.money
-      );
-
-      if (money > previousCareerSavegame.money) {
-        moneyDifferenceSign = "+";
-      }
-      if (money < previousCareerSavegame.money) {
-        moneyDifferenceSign = "-";
-      }
-      string += `<a:MoneySoaring:1319029763398041772> **Finans Hareketleri:** *${money.toLocaleString(
-        "en-GB"
-      )} (${moneyDifferenceSign}${moneyDifferenceAbsolute.toLocaleString(
-        "en-GB"
-      )}).*\n`;
-    }
-    if (previousCareerSavegame.playTime !== playTime) {
-      string += `<a:pixel_clock:1319030004411273297> **Geçirlen Zaman:** *${formatMinutes(
-        playTime
-      )}*.\n`;
-    }
-  }
-
-  return string.trim() || null;
-};
 
 // Yeni: Embed ile güncelleme mesajı oluşturucu (renkli)
 const getUpdateEmbed = (
@@ -486,10 +412,12 @@ const getUpdateEmbed = (
   let hasServerChange = false;
   let hasFinanceOrTimeChange = false;
 
-  const previousDlcCount = Object.values(previousMods).filter(({ name: modName }) => modName.startsWith("pdlc_")).length;
-  const previousModCount = Object.values(previousMods).filter(({ name: modName }) => !modName.startsWith("pdlc_")).length;
-  const dlcCount = Object.values(newData.mods).filter(({ name: modName }) => modName.startsWith("pdlc_")).length;
-  const modCount = Object.values(newData.mods).filter(({ name: modName }) => !modName.startsWith("pdlc_")).length;
+  const dlcCount = Object.values(newData.mods).filter(({ name: modName }) =>
+    modName.startsWith("pdlc_")
+  ).length;
+  const modCount = Object.values(newData.mods).filter(
+    ({ name: modName }) => !modName.startsWith("pdlc_")
+  ).length;
   const { game, version, name: serverName, mapName } = newData.server;
 
   // Sunucu bilgileri değiştiyse
@@ -507,10 +435,20 @@ const getUpdateEmbed = (
     fields.push({
       name: `🖥️ Sunucu Bilgisi`,
       value: `**${serverName}**\n**${game}** *(${version})*\n**Harita:** ${mapName} **DLC**: *${dlcCount}*, **Mod**: *${modCount}*`,
-      inline: false
+      inline: false,
     });
-    if (dlcString) fields.push({ name: 'DLC Değişiklikleri', value: dlcString, inline: false });
-    if (modString) fields.push({ name: 'Mod Değişiklikleri', value: modString, inline: false });
+    if (dlcString)
+      fields.push({
+        name: "DLC Değişiklikleri",
+        value: dlcString,
+        inline: false,
+      });
+    if (modString)
+      fields.push({
+        name: "Mod Değişiklikleri",
+        value: modString,
+        inline: false,
+      });
   }
 
   // Finansal değişiklikler
@@ -518,22 +456,28 @@ const getUpdateEmbed = (
     const { money, playTime } = newData.careerSavegame;
     if (previousCareerSavegame.money !== money) {
       hasFinanceOrTimeChange = true;
-      let moneyDifferenceSign = '';
-      const moneyDifferenceAbsolute = Math.abs(money - previousCareerSavegame.money);
-      if (money > previousCareerSavegame.money) moneyDifferenceSign = '+';
-      if (money < previousCareerSavegame.money) moneyDifferenceSign = '-';
+      let moneyDifferenceSign = "";
+      const moneyDifferenceAbsolute = Math.abs(
+        money - previousCareerSavegame.money
+      );
+      if (money > previousCareerSavegame.money) moneyDifferenceSign = "+";
+      if (money < previousCareerSavegame.money) moneyDifferenceSign = "-";
       fields.push({
-        name: '<a:MoneySoaring:1319029763398041772> Finans Hareketleri',
-        value: `**${money.toLocaleString('en-GB')} (${moneyDifferenceSign}${moneyDifferenceAbsolute.toLocaleString('en-GB')})**`,
-        inline: false
+        name: "<a:MoneySoaring:1319029763398041772> Finans Hareketleri",
+        value: `**${money.toLocaleString(
+          "en-GB"
+        )} (${moneyDifferenceSign}${moneyDifferenceAbsolute.toLocaleString(
+          "en-GB"
+        )})**`,
+        inline: false,
       });
     }
     if (previousCareerSavegame.playTime !== playTime) {
       hasFinanceOrTimeChange = true;
       fields.push({
-        name: '<a:pixel_clock:1319030004411273297> Geçirilen Zaman',
+        name: "<a:pixel_clock:1319030004411273297> Geçirilen Zaman",
         value: `*${formatMinutes(playTime)}*`,
-        inline: false
+        inline: false,
       });
     }
   }
@@ -541,12 +485,12 @@ const getUpdateEmbed = (
   if (fields.length === 0) return null;
 
   // Renk seçimi
-  let color = '#0099ff'; // Varsayılan: finans/zaman
-  if (hasServerChange) color = '#ff9900'; // Mod/dlc/map değişikliği varsa turuncu
+  let color = "#0099ff"; // Varsayılan: finans/zaman
+  if (hasServerChange) color = "#ff9900"; // Mod/dlc/map değişikliği varsa turuncu
 
   const embed = new EmbedBuilder()
     .setColor(color)
-    .setTitle('Sunucu Güncellemesi')
+    .setTitle("Sunucu Güncellemesi")
     .addFields(fields)
     .setTimestamp();
   return embed;
@@ -574,7 +518,7 @@ const sendMessage = (message) => {
     )
     .forEach((channel) => {
       console.log(`Mesaj gönderiliyor: ${channel.guild.name}: ${channel.name}`);
-      if (typeof message === 'object' && message.data && message.data.title) {
+      if (typeof message === "object" && message.data && message.data.title) {
         // Embed ise
         channel.send({ embeds: [message] }).catch((error) => {
           console.error(
@@ -604,18 +548,18 @@ const sendServerStatusMessage = (status, channelId) => {
     return;
   }
 
-  let statusMessage = '';
-  let statusEmoji = '';
-  let color = '#cccccc';
+  let statusMessage = "";
+  let statusEmoji = "";
+  let color = "#cccccc";
 
-  if (status === 'online') {
-    statusEmoji = '<:2171online:1319749534204563466>';
-    statusMessage = 'Sunucu çevrimiçi';
-    color = '#43b581';
-  } else if (status === 'offline') {
-    statusEmoji = '<:1006donotdisturb:1319749525283409971>';
-    statusMessage = 'Sunucu çevrimdışı';
-    color = '#f04747';
+  if (status === "online") {
+    statusEmoji = "<:2171online:1319749534204563466>";
+    statusMessage = "Sunucu çevrimiçi";
+    color = "#43b581";
+  } else if (status === "offline") {
+    statusEmoji = "<:1006donotdisturb:1319749525283409971>";
+    statusMessage = "Sunucu çevrimdışı";
+    color = "#f04747";
   }
 
   const embed = new EmbedBuilder()
@@ -641,12 +585,14 @@ async function isServerReachable() {
       method: "GET",
       body: null,
       retries: 2,
-      retryDelay: 500
+      retryDelay: 500,
     });
-    
+
     return response.ok;
   } catch (error) {
-    console.error(`❌ Sunucu erişilebilirlik kontrolü başarısız: ${error.message}`);
+    console.error(
+      `❌ Sunucu erişilebilirlik kontrolü başarısız: ${error.message}`
+    );
     return false;
   }
 }
@@ -664,7 +610,7 @@ const update = () => {
 
   // Önce sunucuya erişilebildiğini kontrol et
   isServerReachable()
-    .then(reachable => {
+    .then((reachable) => {
       if (!reachable) {
         if (!db.server.unreachable) {
           db.server.unreachable = true;
@@ -672,7 +618,11 @@ const update = () => {
           if (db.server.online) {
             sendServerStatusMessage("offline", CONFIG.UPDATE_CHANNEL_ID);
             db.server.online = false;
-            fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+            fs.writeFileSync(
+              CONFIG.DB_PATH,
+              JSON.stringify(db, null, 2),
+              "utf8"
+            );
           }
         }
         return;
@@ -692,7 +642,9 @@ const update = () => {
             rawData.careerSaveGameData &&
             typeof rawData.careerSaveGameData === "string"
           ) {
-            rawData.careerSaveGameData = fixColorCodes(rawData.careerSaveGameData);
+            rawData.careerSaveGameData = fixColorCodes(
+              rawData.careerSaveGameData
+            );
           }
 
           const previouslyUnreachable = db.server.unreachable;
@@ -704,7 +656,11 @@ const update = () => {
 
           if (previouslyUnreachable && data) {
             db.server.unreachable = false;
-            fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+            fs.writeFileSync(
+              CONFIG.DB_PATH,
+              JSON.stringify(db, null, 2),
+              "utf8"
+            );
           }
 
           if (data) {
@@ -718,7 +674,11 @@ const update = () => {
               sendMessage(updateEmbed);
             }
             db = data;
-            fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+            fs.writeFileSync(
+              CONFIG.DB_PATH,
+              JSON.stringify(db, null, 2),
+              "utf8"
+            );
             client.user.setActivity("Farming Simulator 25");
             client.user.setStatus("online");
           } else {
@@ -727,7 +687,11 @@ const update = () => {
             }
             db.server.online = false;
             db.server.unreachable = false;
-            fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+            fs.writeFileSync(
+              CONFIG.DB_PATH,
+              JSON.stringify(db, null, 2),
+              "utf8"
+            );
             client.user.setActivity("Sunucu Çevrimdışı", { type: "WATCHING" });
             client.user.setStatus("dnd");
           }
@@ -740,11 +704,15 @@ const update = () => {
               sendMessage("⚠️ **Sunucu verisi alınamıyor!**");
             }
             db.server.unreachable = true;
-            fs.writeFileSync(CONFIG.DB_PATH, JSON.stringify(db, null, 2), "utf8");
+            fs.writeFileSync(
+              CONFIG.DB_PATH,
+              JSON.stringify(db, null, 2),
+              "utf8"
+            );
           }
         });
     })
-    .catch(error => {
+    .catch((error) => {
       console.error("❌ Sunucu kontrol işleminde hata:", error.message);
     });
 
@@ -866,23 +834,29 @@ function sendUptimeData() {
 // Günlük oyuncu aktivite istatistiklerini embed'e ekle
 function addPlayerActivityStats(embed) {
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const logFilePath = path.join(CONFIG.PLAYER_LOGS_DIR, `player_activity_${today}.log`);
-    
+    const today = new Date().toISOString().split("T")[0];
+    const logFilePath = path.join(
+      CONFIG.PLAYER_LOGS_DIR,
+      `player_activity_${today}.log`
+    );
+
     if (!fs.existsSync(logFilePath)) {
-      embed.addFields({ 
-        name: "📊 Bugünkü Oyuncu Aktivitesi", 
-        value: "Bugün için kayıtlı oyuncu giriş/çıkış aktivitesi bulunmuyor."
+      embed.addFields({
+        name: "📊 Bugünkü Oyuncu Aktivitesi",
+        value: "Bugün için kayıtlı oyuncu giriş/çıkış aktivitesi bulunmuyor.",
       });
       return;
     }
 
-    const logs = fs.readFileSync(logFilePath, 'utf8').split('\n').filter(line => line.trim() !== '');
-    
+    const logs = fs
+      .readFileSync(logFilePath, "utf8")
+      .split("\n")
+      .filter((line) => line.trim() !== "");
+
     if (logs.length === 0) {
-      embed.addFields({ 
-        name: "📊 Bugünkü Oyuncu Aktivitesi", 
-        value: "Bugün hiç oyuncu giriş/çıkış aktivitesi kaydedilmemiş."
+      embed.addFields({
+        name: "📊 Bugünkü Oyuncu Aktivitesi",
+        value: "Bugün hiç oyuncu giriş/çıkış aktivitesi kaydedilmemiş.",
       });
       return;
     }
@@ -890,17 +864,19 @@ function addPlayerActivityStats(embed) {
     // Son 10 aktiviteyi göster
     const maxEntries = Math.min(10, logs.length);
     const lastEntries = logs.slice(-maxEntries);
-    
-    embed.addFields({ 
-      name: `📊 Bugünkü Oyuncu Aktivitesi (Son ${maxEntries}/${logs.length})`, 
-      value: lastEntries.join('\n')
+
+    embed.addFields({
+      name: `📊 Bugünkü Oyuncu Aktivitesi (Son ${maxEntries}/${logs.length})`,
+      value: lastEntries.join("\n"),
     });
-    
   } catch (error) {
-    console.error("❌ Oyuncu aktivite istatistikleri eklenirken hata:", error.message);
-    embed.addFields({ 
-      name: "📊 Bugünkü Oyuncu Aktivitesi", 
-      value: "Aktivite verileri yüklenirken bir hata oluştu."
+    console.error(
+      "❌ Oyuncu aktivite istatistikleri eklenirken hata:",
+      error.message
+    );
+    embed.addFields({
+      name: "📊 Bugünkü Oyuncu Aktivitesi",
+      value: "Aktivite verileri yüklenirken bir hata oluştu.",
     });
   }
 }
@@ -943,9 +919,14 @@ const init = async () => {
     if (!fs.existsSync(CONFIG.PLAYER_LOGS_DIR)) {
       try {
         fs.mkdirSync(CONFIG.PLAYER_LOGS_DIR, { recursive: true });
-        console.log(`✅ Oyuncu log dizini oluşturuldu: ${CONFIG.PLAYER_LOGS_DIR}`);
+        console.log(
+          `✅ Oyuncu log dizini oluşturuldu: ${CONFIG.PLAYER_LOGS_DIR}`
+        );
       } catch (error) {
-        console.error(`❌ ${CONFIG.PLAYER_LOGS_DIR} dizini oluşturulamadı:`, error.message);
+        console.error(
+          `❌ ${CONFIG.PLAYER_LOGS_DIR} dizini oluşturulamadı:`,
+          error.message
+        );
       }
     }
 
@@ -975,7 +956,9 @@ const init = async () => {
     // Setup Discord client with reconnection support
     const connected = await setupDiscordClient();
     if (!connected) {
-      console.error("❌ Discord'a bağlanılamadı, başlatma işlemi iptal edildi.");
+      console.error(
+        "❌ Discord'a bağlanılamadı, başlatma işlemi iptal edildi."
+      );
       return;
     }
   } catch (error) {
@@ -991,11 +974,16 @@ client.on("ready", async () => {
   try {
     const { activePlayers } = await fetchUptimeData();
     if (activePlayers) {
-      previousActivePlayers = new Set(activePlayers.map(player => player._));
-      console.log(`✅ Başlangıç aktif oyuncu listesi yüklendi (${previousActivePlayers.size} oyuncu)`);
+      previousActivePlayers = new Set(activePlayers.map((player) => player._));
+      console.log(
+        `✅ Başlangıç aktif oyuncu listesi yüklendi (${previousActivePlayers.size} oyuncu)`
+      );
     }
   } catch (error) {
-    console.error("❌ Başlangıç oyuncu listesi yüklenirken hata:", error.message);
+    console.error(
+      "❌ Başlangıç oyuncu listesi yüklenirken hata:",
+      error.message
+    );
   }
 
   // Setup message purging
@@ -1024,21 +1012,28 @@ client.on("ready", async () => {
 
   // Log başlangıç bilgisi
   console.log("===== OYUNCU AKTİVİTE LOGLARININ DURUMU =====");
-  const today = new Date().toISOString().split('T')[0];
-  const logFilePath = path.join(CONFIG.PLAYER_LOGS_DIR, `player_activity_${today}.log`);
+  const today = new Date().toISOString().split("T")[0];
+  const logFilePath = path.join(
+    CONFIG.PLAYER_LOGS_DIR,
+    `player_activity_${today}.log`
+  );
   if (fs.existsSync(logFilePath)) {
     console.log(`✅ Bugünkü (${today}) log dosyası mevcut: ${logFilePath}`);
     const logStats = fs.statSync(logFilePath);
-    console.log(`📊 Log dosyası boyutu: ${(logStats.size / 1024).toFixed(2)} KB`);
-    
+    console.log(
+      `📊 Log dosyası boyutu: ${(logStats.size / 1024).toFixed(2)} KB`
+    );
+
     // Son 5 aktiviteyi göster
-    const recentLogs = getTodayPlayerActivityLogs().split('\n').filter(line => line.trim() !== '');
+    const recentLogs = getTodayPlayerActivityLogs()
+      .split("\n")
+      .filter((line) => line.trim() !== "");
     const logCount = recentLogs.length;
-    
+
     if (logCount > 0) {
       console.log(`📝 Bugün toplam ${logCount} aktivite kaydedilmiş.`);
       console.log("Son aktiviteler:");
-      recentLogs.slice(-5).forEach(log => console.log(`  ${log}`));
+      recentLogs.slice(-5).forEach((log) => console.log(`  ${log}`));
     } else {
       console.log("📝 Bugün henüz aktivite kaydedilmemiş.");
     }
@@ -1056,7 +1051,7 @@ client.on("ready", async () => {
 });
 
 // Slash komutlarını dinle
-client.on('interactionCreate', async interaction => {
+client.on("interactionCreate", async (interaction) => {
   if (interaction.isChatInputCommand()) {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
@@ -1064,15 +1059,24 @@ client.on('interactionCreate', async interaction => {
       await command.execute(interaction);
     } catch (error) {
       console.error(error);
-      await interaction.reply({ content: 'Komut çalıştırılırken bir hata oluştu.', ephemeral: true });
+      await interaction.reply({
+        content: "Komut çalıştırılırken bir hata oluştu.",
+        ephemeral: true,
+      });
     }
-  } else if (interaction.isStringSelectMenu() && interaction.customId === 'temizle_menu') {
+  } else if (
+    interaction.isStringSelectMenu() &&
+    interaction.customId === "temizle_menu"
+  ) {
     // Sadece komutu kullanan kişi seçim yapabilsin
     if (interaction.user.id !== interaction.message.interaction.user.id) {
-      return interaction.reply({ content: 'Bu menüyü sadece komutu kullanan kişi kullanabilir.', ephemeral: true });
+      return interaction.reply({
+        content: "Bu menüyü sadece komutu kullanan kişi kullanabilir.",
+        ephemeral: true,
+      });
     }
-    const command = client.commands.get('temizle');
-    if (command && typeof command.handleSelect === 'function') {
+    const command = client.commands.get("temizle");
+    if (command && typeof command.handleSelect === "function") {
       await command.handleSelect(interaction);
     }
   }
