@@ -7,7 +7,7 @@ module.exports = {
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
   async execute(interaction) {
     if (!interaction.member.permissions.has('ManageMessages')) {
-      return await interaction.reply({ content: 'Bu komutu kullanmak için mesajları yönet iznine sahip olmalısın.', ephemeral: true });
+      return await interaction.reply({ content: 'Bu komutu kullanmak için mesajları yönet iznine sahip olmalısın.', flags: 64 });
     }
     // Menü oluştur
     const menu = new StringSelectMenuBuilder()
@@ -20,7 +20,7 @@ module.exports = {
         { label: 'Bu kanaldaki her şey', value: 'all', description: 'Kanalda silinebilen tüm mesajlar' },
       ]);
     const row = new ActionRowBuilder().addComponents(menu);
-    await interaction.reply({ content: 'Kaç mesaj silinsin?', components: [row], ephemeral: true });
+    await interaction.reply({ content: 'Kaç mesaj silinsin?', components: [row], flags: 64 });
 
     // Menü 15 saniye sonra devre dışı bırakılır
     setTimeout(async () => {
@@ -37,7 +37,7 @@ module.exports = {
   // Menüden seçim yapılınca çalışacak handler
   async handleSelect(interaction) {
     if (!interaction.member.permissions.has('ManageMessages')) {
-      return await interaction.reply({ content: 'Bu işlemi yapmak için mesajları yönet iznine sahip olmalısın.', ephemeral: true });
+      return await interaction.reply({ content: 'Bu işlemi yapmak için mesajları yönet iznine sahip olmalısın.', flags: 64 });
     }
     const value = interaction.values[0];
     let deletedCount = 0;
@@ -55,7 +55,11 @@ module.exports = {
         await interaction.update({ content: `${deleted.size} mesaj silindi.`, components: [] });
       }
     } catch (err) {
-      await interaction.update({ content: 'Mesajlar silinirken bir hata oluştu.', components: [] });
+      try {
+        await interaction.update({ content: 'Mesajlar silinirken bir hata oluştu.', components: [] });
+      } catch (e) {
+        // interaction zaten yanıtlandıysa hata oluşabilir, görmezden gel
+      }
     }
   }
 };

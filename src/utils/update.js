@@ -9,7 +9,7 @@ const {
   parseData,
   getDefaultDatabase,
   fixColorCodes,
-} = require('./utils/utils');
+} = require('./utils');
 
 /**
  * Veritabanı dosyasını günceller
@@ -17,44 +17,27 @@ const {
  */
 const update = async () => {
   console.log('Veritabanı güncelleniyor...');
-  
   try {
-    // Veritabanı dizininin varlığını kontrol et ve oluştur
     const dbDir = path.dirname(dbPath);
     if (!fs.existsSync(dbDir)) {
       fs.mkdirSync(dbDir, { recursive: true });
       console.log(`✅ Dizin oluşturuldu: ${dbDir}`);
     }
-    
-    // Veriyi çek ve işle
     const rawData = await getDataFromAPI();
-    
-    // Renk kodu düzeltme işlemini uygula
-    if (rawData && rawData.serverData && typeof rawData.serverData === 'string') {
-      rawData.serverData = fixColorCodes(rawData.serverData);
-    }
-    if (rawData && rawData.careerSaveGameData && typeof rawData.careerSaveGameData === 'string') {
-      rawData.careerSaveGameData = fixColorCodes(rawData.careerSaveGameData);
-    }
-    
+    if (rawData?.serverData && typeof rawData.serverData === 'string') rawData.serverData = fixColorCodes(rawData.serverData);
+    if (rawData?.careerSaveGameData && typeof rawData.careerSaveGameData === 'string') rawData.careerSaveGameData = fixColorCodes(rawData.careerSaveGameData);
     const data = parseData(rawData);
-    
+    const toWrite = data || getDefaultDatabase();
+    fs.writeFileSync(dbPath, JSON.stringify(toWrite, null, 2), 'utf8');
     if (data) {
-      fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), 'utf8');
       console.log('✅ Veritabanı yazıldı');
     } else {
-      // Sunucu çevrimdışı görünüyorsa varsayılan veritabanı oluştur
-      const defaultData = getDefaultDatabase();
-      fs.writeFileSync(dbPath, JSON.stringify(defaultData, null, 2), 'utf8');
       console.log('⚠️ Sunucu çevrimdışı görünüyor, varsayılan veritabanı oluşturuldu');
     }
   } catch (e) {
     console.error('❌ Güncelleme işlemi sırasında hata:', e);
-    
-    // Hata durumunda varsayılan veritabanı oluşturmayı dene
     try {
-      const defaultData = getDefaultDatabase();
-      fs.writeFileSync(dbPath, JSON.stringify(defaultData, null, 2), 'utf8');
+      fs.writeFileSync(dbPath, JSON.stringify(getDefaultDatabase(), null, 2), 'utf8');
       console.log('⚠️ Hata oluştu, varsayılan veritabanı oluşturuldu');
     } catch (writeError) {
       console.error('❌ Varsayılan veritabanı yazılamadı:', writeError);

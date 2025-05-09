@@ -60,74 +60,26 @@ function log(message) {
   const timestamp = new Date().toISOString();
   const logMessage = `[${timestamp}] ${message}`;
   console.log(logMessage);
-  
-  try {
-    logStream.write(logMessage + '\n');
-  } catch (error) {
-    console.error(`Log yazılamadı: ${error.message}`);
-  }
+  try { logStream.write(logMessage + '\n'); } catch {}
 }
 
 // Bot işlemini başlatma
 function startBot() {
-  if (botProcess) {
-    return;
-  }
-
+  if (botProcess) return;
   lastStartTime = Date.now();
-  
   log('Bot işlemi başlatılıyor...');
-  
   try {
-    // Bot işlemini spawn et
-    botProcess = spawn('node', [CONFIG.BOT_SCRIPT], {
-      stdio: 'pipe',
-      detached: false
-    });
-
-    // Çıkışları aktar
-    botProcess.stdout.on('data', (data) => {
-      process.stdout.write(data);
-      try {
-        logStream.write(data);
-      } catch (error) {
-        console.error(`Log yazılamadı: ${error.message}`);
-      }
-    });
-
-    botProcess.stderr.on('data', (data) => {
-      process.stderr.write(data);
-      try {
-        logStream.write(data);
-      } catch (error) {
-        console.error(`Log yazılamadı: ${error.message}`);
-      }
-    });
-
-    // İşlem çıkışını ele al
+    botProcess = spawn('node', [CONFIG.BOT_SCRIPT], { stdio: 'pipe', detached: false });
+    botProcess.stdout.on('data', d => { process.stdout.write(d); try { logStream.write(d); } catch {} });
+    botProcess.stderr.on('data', d => { process.stderr.write(d); try { logStream.write(d); } catch {} });
     botProcess.on('exit', (code, signal) => {
       const now = Date.now();
-      
       log(`Bot işlemi ${code} kodu ve ${signal} sinyali ile sonlandı`);
       botProcess = null;
-
-      // İşlem CRASH_RESET_TIME_MS süresince stabil çalıştıysa, çökme sayacını sıfırla
-      if (now - lastStartTime > CONFIG.CRASH_RESET_TIME_MS) {
-        log('Bot uzun süre stabil çalıştı. Çökme sayacı sıfırlanıyor.');
-        crashes = 0;
-      } else {
-        crashes++;
-        lastCrashTime = now;
-        log(`Çökme sayacı: ${crashes}/${CONFIG.MAX_CRASHES}`);
-      }
-
-      // Yeniden başlatma kontrolü
-      if (crashes < CONFIG.MAX_CRASHES) {
-        log(`Yeniden başlatmadan önce ${CONFIG.RESTART_DELAY_MS}ms bekleniyor...`);
-        setTimeout(startBot, CONFIG.RESTART_DELAY_MS);
-      } else {
-        log('Çok fazla çökme. Vazgeçiliyor. Lütfen loglarınızı kontrol edin ve manuel olarak yeniden başlatın.');
-      }
+      if (now - lastStartTime > CONFIG.CRASH_RESET_TIME_MS) { log('Bot uzun süre stabil çalıştı. Çökme sayacı sıfırlanıyor.'); crashes = 0; }
+      else { crashes++; lastCrashTime = now; log(`Çökme sayacı: ${crashes}/${CONFIG.MAX_CRASHES}`); }
+      if (crashes < CONFIG.MAX_CRASHES) { log(`Yeniden başlatmadan önce ${CONFIG.RESTART_DELAY_MS}ms bekleniyor...`); setTimeout(startBot, CONFIG.RESTART_DELAY_MS); }
+      else { log('Çok fazla çökme. Vazgeçiliyor. Lütfen loglarınızı kontrol edin ve manuel olarak yeniden başlatın.'); }
     });
   } catch (error) {
     log(`Bot başlatılırken hata oluştu: ${error.message}`);
@@ -136,43 +88,17 @@ function startBot() {
   }
 }
 
-// Bot'un çalışıp çalışmadığını kontrol et
-function checkBot() {
-  if (!botProcess) {
-    log('Bot işlemi bulunamadı. Başlatılıyor...');
-    startBot();
-  }
-}
-
-// Bot'un çalışıp çalışmadığını kontrol etmek için interval kur
+function checkBot() { if (!botProcess) { log('Bot işlemi bulunamadı. Başlatılıyor...'); startBot(); } }
 const intervalId = setInterval(checkBot, CONFIG.CHECK_INTERVAL_MS);
 
-// Watchdog işlem çıkışını ele al
 process.on('exit', () => {
   log('Watchdog kapatılıyor...');
   clearInterval(intervalId);
-  
-  if (botProcess) {
-    log('Bot işlemi sonlandırılıyor...');
-    botProcess.kill();
-  }
-  
-  try {
-    logStream.end();
-  } catch (error) {
-    console.error(`Log akışı kapatılamadı: ${error.message}`);
-  }
+  if (botProcess) { log('Bot işlemi sonlandırılıyor...'); botProcess.kill(); }
+  try { logStream.end(); } catch {}
 });
-
-// Sinyalleri ele al
 ['SIGINT', 'SIGTERM', 'SIGQUIT'].forEach(signal => {
-  process.on(signal, () => {
-    log(`${signal} sinyali alındı, kapatılıyor...`);
-    process.exit(0);
-  });
+  process.on(signal, () => { log(`${signal} sinyali alındı, kapatılıyor...`); process.exit(0); });
 });
-
-// Bot'u ilk olarak başlat
 startBot();
-
-log('Watchdog başarıyla başlatıldı. Durdurmak için Ctrl+C tuşlarına basın.'); 
+log('Watchdog başarıyla başlatıldı. Durdurmak için Ctrl+C tuşlarına basın.');

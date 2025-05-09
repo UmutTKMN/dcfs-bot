@@ -30,7 +30,9 @@ const {
   getModString,
   fixColorCodes,
 } = require("./utils/utils");
-const { getNextPurge, willPurge, purgeOldMessages } = require("./utils/purge");
+const update = require("./utils/update");
+const watchdog = require("./utils/watchdog");
+const slashCommands = require("./utils/slash-commands");
 
 // Environment variables - Standardized names
 const CONFIG = {
@@ -61,7 +63,6 @@ const CONFIG = {
 // State variables
 let intervalTimer = null;
 let db = getDefaultDatabase();
-let nextPurge = 0;
 let lastUptimeUpdateTime = Date.now();
 let previousActivePlayers = new Set(); // Son kontrol edilen aktif oyuncu listesi
 
@@ -115,43 +116,29 @@ async function registerSlashCommands() {
 // Oyuncu aktivitelerini loglayan yardımcı fonksiyon
 function logPlayerActivity(playerName, action) {
   try {
-    // Log dizini yoksa oluştur
     const logDir = CONFIG.PLAYER_LOGS_DIR;
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
       console.log(`✅ Log dizini oluşturuldu: ${logDir}`);
     }
-
-    // Günün tarihini al (YYYY-MM-DD formatında)
     const today = new Date().toISOString().split('T')[0];
     const logFilePath = path.join(logDir, `player_activity_${today}.log`);
-
-    // Şu anki tam zamanı al
     const timestamp = new Date().toISOString().replace('T', ' ').substr(0, 19);
-
-    // Log mesajını oluştur
     const logMessage = `[${timestamp}] ${playerName} ${action === 'join' ? 'sunucuya katıldı' : 'sunucudan ayrıldı'}\n`;
-
-    // Dosyaya ekle (append)
     fs.appendFileSync(logFilePath, logMessage);
   } catch (error) {
     console.error(`❌ Oyuncu aktivitesi loglanırken hata: ${error.message}`);
   }
 }
 
-// Yeni: Oyuncu giriş/çıkış embed mesajı oluşturucu
 function sendPlayerActivityEmbed(playerName, action, durationMs = null) {
-  if (!CONFIG.PLAYER_ACTIVITY_CHANNEL_ID) return;
   const channel = client.channels.cache.get(CONFIG.PLAYER_ACTIVITY_CHANNEL_ID);
   if (!channel) return;
-
-  let color = action === 'join' ? '#43b581' : '#f04747';
-  let emoji = action === 'join' ? '<:2171online:1319749534204563466>' : '<:1006donotdisturb:1319749525283409971>';
-  let title = action === 'join' ? `${emoji} ${playerName} sunucuya katıldı!` : `${emoji} ${playerName} sunucudan ayrıldı!`;
+  const color = action === 'join' ? '#43b581' : '#f04747';
+  const emoji = action === 'join' ? '<:2171online:1319749534204563466>' : '<:1006donotdisturb:1319749525283409971>';
+  const title = action === 'join' ? `${emoji} ${playerName} sunucuya katıldı!` : `${emoji} ${playerName} sunucudan ayrıldı!`;
   let description = '';
-
   if (action === 'leave' && durationMs) {
-    // Süreyi saat/dakika olarak göster
     const totalSeconds = Math.floor(durationMs / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -162,28 +149,21 @@ function sendPlayerActivityEmbed(playerName, action, durationMs = null) {
     if (hours === 0 && minutes === 0) sureStr += `${seconds} saniye`;
     description = `⏱️ Oturum süresi: **${sureStr.trim()}**`;
   }
-
   const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle(title)
     .setTimestamp();
   if (description) embed.setDescription(description);
-
   channel.send({ embeds: [embed] }).catch((error) => {
     console.error(`❌ Oyuncu aktivite embed mesajı gönderilirken hata: ${error.message}`);
   });
 }
 
-// Bugünkü log dosyasını okuyan yardımcı fonksiyon
 function getTodayPlayerActivityLogs() {
   try {
     const today = new Date().toISOString().split('T')[0];
     const logFilePath = path.join(CONFIG.PLAYER_LOGS_DIR, `player_activity_${today}.log`);
-    
-    if (!fs.existsSync(logFilePath)) {
-      return "Bugün için oyuncu aktivitesi kaydı bulunmuyor.";
-    }
-    
+    if (!fs.existsSync(logFilePath)) return "Bugün için oyuncu aktivitesi kaydı bulunmuyor.";
     return fs.readFileSync(logFilePath, 'utf8');
   } catch (error) {
     console.error(`❌ Bugünkü log dosyası okunurken hata: ${error.message}`);
@@ -222,9 +202,7 @@ async function checkPlayerJoinLeave() {
   try {
     const result = await fetchUptimeData();
     const activePlayers = result?.activePlayers || [];
-    const currentActivePlayerNames = new Set(
-      activePlayers.filter(player => player && player._).map(player => player._)
-    );
+    const currentActivePlayerNames = new Set(activePlayers.filter(player => player && player._).map(player => player._));
 
     // İlk çalıştırma kontrolü
     if (previousActivePlayers.size === 0) {
@@ -651,24 +629,9 @@ const sendServerStatusMessage = (status, channelId) => {
   });
 };
 
-// Message purging functionality
-const attemptPurge = () => {
-  const now = new Date().getTime();
-  if (willPurge() && now >= nextPurge) {
-    nextPurge = getNextPurge();
-    console.log("Temizlenecek mesajlar aranıyor...");
-    try {
-      purgeOldMessages(client);
-    } catch (e) {
-      console.error("❌ Mesajlar temizlenirken hata:", e.message);
-    }
-    console.log(`Sonraki temizleme ${new Date(nextPurge)} tarihinde olacak`);
-  }
-};
-
-/**
- * MAIN UPDATE FUNCTIONS
- */
+// /**
+//  * MAIN UPDATE FUNCTIONS
+//  */
 
 // Sunucu erişilebilirlik kontrolü için yardımcı fonksiyon
 async function isServerReachable() {
@@ -785,7 +748,7 @@ const update = () => {
       console.error("❌ Sunucu kontrol işleminde hata:", error.message);
     });
 
-  attemptPurge();
+  // attemptPurge(); // devre dışı
 };
 
 // Schedule daily messages at specified time
@@ -1036,16 +999,16 @@ client.on("ready", async () => {
   }
 
   // Setup message purging
-  if (willPurge()) {
-    if (CONFIG.PURGE_ON_STARTUP) {
-      attemptPurge();
-    } else {
-      nextPurge = getNextPurge();
-      console.log(
-        `✅ İlk temizleme ${new Date(nextPurge)} tarihinde planlandı`
-      );
-    }
-  }
+  // if (willPurge()) { // devre dışı
+  //   if (CONFIG.PURGE_ON_STARTUP) {
+  //     attemptPurge();
+  //   } else {
+  //     nextPurge = getNextPurge();
+  //     console.log(
+  //       `✅ İlk temizleme ${new Date(nextPurge)} tarihinde planlandı`
+  //     );
+  //   }
+  // }
 
   // Schedule daily stats message
   scheduleDailyMessage(
