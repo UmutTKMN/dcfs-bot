@@ -80,7 +80,7 @@ echo FS25 Discord Botu Watchdog ile başlatılıyor...
 echo Bot çalışırken bu pencereyi kapatmayın!
 echo Durdurmak için CTRL+C tuşlarına basın.
 echo.
-start "FS25 Discord Bot (Watchdog)" /wait node ./src/watchdog.js
+start "FS25 Discord Bot (Watchdog)" /wait node ./src/utils/watchdog.js
 echo.
 echo Bot durduruldu. Ana menüye dönmek için bir tuşa basın.
 pause > nul
@@ -90,7 +90,7 @@ goto menu
 :update_db
 cls
 echo Veritabanı güncelleniyor...
-call node ./src/update.js
+call node ./src/utils/update.js
 echo.
 echo İşlem tamamlandı. Ana menüye dönmek için bir tuşa basın.
 pause > nul
@@ -133,4 +133,4 @@ goto menu
 :exit
 echo Bot yöneticisi kapatılıyor...
 timeout /t 2 > nul
-exit 
+exit
