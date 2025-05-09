@@ -30,7 +30,7 @@ const {
   getModString,
   fixColorCodes,
 } = require("./utils/utils");
-const update = require("./utils/update");
+const updateModule = require("./utils/update");
 const watchdog = require("./utils/watchdog");
 const slashCommands = require("./utils/slash-commands");
 
