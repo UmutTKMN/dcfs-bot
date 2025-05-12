@@ -1,9 +1,10 @@
 .vscode
-
+.gitignore
 .env
 logs
 data
 node_modules
+backup
 
 package-lock.json
 .gitignore

@@ -138,14 +138,10 @@ function sendPlayerActivityEmbed(playerName, action, durationMs = null) {
   const channel = client.channels.cache.get(CONFIG.PLAYER_ACTIVITY_CHANNEL_ID);
   if (!channel) return;
   const color = action === "join" ? "#43b581" : "#f04747";
-  const emoji =
-    action === "join"
-      ? "<:2171online:1319749534204563466>"
-      : "<:1006donotdisturb:1319749525283409971>";
   const title =
     action === "join"
-      ? `${emoji} ${playerName} sunucuya katıldı!`
-      : `${emoji} ${playerName} sunucudan ayrıldı!`;
+      ? `**${playerName}** sunucuya katıldı!`
+      : `**${playerName}** sunucudan ayrıldı!`;
   let description = "";
   if (action === "leave" && durationMs) {
     const totalSeconds = Math.floor(durationMs / 1000);
@@ -156,7 +152,7 @@ function sendPlayerActivityEmbed(playerName, action, durationMs = null) {
     if (hours > 0) sureStr += `${hours} saat `;
     if (minutes > 0) sureStr += `${minutes} dakika `;
     if (hours === 0 && minutes === 0) sureStr += `${seconds} saniye`;
-    description = `⏱️ Oturum süresi: **${sureStr.trim()}**`;
+    description = `⏱️ Oturum süresi: *${sureStr.trim()}*`;
   }
   const embed = new EmbedBuilder()
     .setColor(color)
@@ -490,11 +486,98 @@ const getUpdateEmbed = (
 
   const embed = new EmbedBuilder()
     .setColor(color)
-    .setTitle("Sunucu Güncellemesi")
+    .setTitle("Güncelleme")
     .addFields(fields)
     .setTimestamp();
   return embed;
 };
+
+// Yeni/güncellenen mod ve dlc'leri linkli embed olarak belirli bir kanala gönder
+function sendModLinksEmbed(newData, previousMods, channelId) {
+  if (!channelId) return;
+  const channel = client.channels.cache.get(channelId);
+  if (!channel) {
+    console.error(`❌ Mod link embed kanalı bulunamadı, ID: ${channelId}`);
+    return;
+  }
+  const baseUrl = "https://gs-85-14-206-57.server.4netplayers.com:20820/mods/";
+  function modLink(mod) {
+    // filename varsa onu kullan, yoksa name'den üret
+    const filename = mod.filename || (mod.name ? `${mod.name}.zip` : undefined);
+    return filename ? `${baseUrl}${filename}` : "";
+  }
+  // Hem mod hem dlc için ayrı ayrı
+  const types = [
+    { dlc: false, title: 'Mod' },
+    { dlc: true, title: 'DLC' }
+  ];
+  types.forEach(({ dlc, title }) => {
+    const filteredNew = Object.fromEntries(
+      Object.entries(newData.mods).filter(([, { name: modName }]) =>
+        dlc ? modName.startsWith("pdlc_") : !modName.startsWith("pdlc_")
+      )
+    );
+    const filteredPrevious = Object.fromEntries(
+      Object.entries(previousMods).filter(([, { name: modName }]) =>
+        dlc ? modName.startsWith("pdlc_") : !modName.startsWith("pdlc_")
+      )
+    );
+    const newMods = [];
+    const updatedMods = [];
+    Object.values(filteredNew)
+      .sort((modA, modB) =>
+        modA.text.toLowerCase().localeCompare(modB.text.toLowerCase())
+      )
+      .forEach((mod) => {
+        if (!Object.prototype.hasOwnProperty.call(filteredPrevious, mod.hash)) {
+          if (
+            Object.values(filteredPrevious)
+              .map(({ name: modName }) => modName)
+              .includes(mod.name)
+          ) {
+            updatedMods.push(mod);
+          } else {
+            newMods.push(mod);
+          }
+        }
+      });
+    if (newMods.length === 0 && updatedMods.length === 0) return;
+    let desc = "";
+    if (newMods.length > 0) {
+      desc += `Yeni ${title}:\n`;
+      newMods.forEach((mod) => {
+        const link = modLink(mod);
+        desc += link
+          ? `- [${mod.text} ${mod.version}](${link}) by ${mod.author}\n`
+          : `- **${mod.text} ${mod.version}** by ${mod.author}\n`;
+      });
+    }
+    if (updatedMods.length > 0) {
+      desc += `Güncellenen ${title}:\n`;
+      updatedMods.forEach((mod) => {
+        const link = modLink(mod);
+        desc += link
+          ? `- [${mod.text} ${mod.version}](${link}) by ${mod.author}\n`
+          : `- **${mod.text} ${mod.version}** by ${mod.author}\n`;
+      });
+    }
+    // Renk seçimi: yeni varsa yeşil, sadece güncelleme varsa turuncu
+    let embedColor = "#2980b9"; // Varsayılan
+    if (newMods.length > 0) embedColor = "#43b581"; // Yeşil
+    else if (updatedMods.length > 0) embedColor = "#ff9900"; // Turuncu
+
+    if (desc) {
+      const embed = new EmbedBuilder()
+        .setColor(embedColor)
+        .setTitle(`${title} İndirme Bağlantıları`)
+        .setDescription(desc)
+        .setTimestamp();
+      channel.send({ embeds: [embed] }).catch((err) => {
+        console.error(`❌ Mod/DLC link embed gönderilemedi:`, err.message);
+      });
+    }
+  });
+}
 
 // Send message to appropriate Discord channels
 const sendMessage = (message) => {
@@ -564,7 +647,7 @@ const sendServerStatusMessage = (status, channelId) => {
 
   const embed = new EmbedBuilder()
     .setColor(color)
-    .setTitle(`${statusEmoji} ${statusMessage}`)
+    .setTitle(`${statusMessage}`)
     .setTimestamp();
 
   console.log(`Durum mesajı gönderiliyor: ${channel.name}`);
@@ -673,6 +756,7 @@ const update = () => {
             if (updateEmbed) {
               sendMessage(updateEmbed);
             }
+            sendModLinksEmbed(data, previousMods, "1316793481812775002");
             db = data;
             fs.writeFileSync(
               CONFIG.DB_PATH,
@@ -800,9 +884,6 @@ function sendUptimeData() {
           iconURL: botAvatarURL,
         });
 
-      // Günlük oyuncu giriş-çıkış istatistiklerini de ekle
-      addPlayerActivityStats(embed);
-
       // Send embed to designated channel
       const channel = client.channels.cache.get(
         CONFIG.DAILY_SUMMARY_CHANNEL_ID
@@ -829,56 +910,6 @@ function sendUptimeData() {
       console.error("❌ JSON ayrıştırma hatası:", parseError.message);
     }
   });
-}
-
-// Günlük oyuncu aktivite istatistiklerini embed'e ekle
-function addPlayerActivityStats(embed) {
-  try {
-    const today = new Date().toISOString().split("T")[0];
-    const logFilePath = path.join(
-      CONFIG.PLAYER_LOGS_DIR,
-      `player_activity_${today}.log`
-    );
-
-    if (!fs.existsSync(logFilePath)) {
-      embed.addFields({
-        name: "📊 Bugünkü Oyuncu Aktivitesi",
-        value: "Bugün için kayıtlı oyuncu giriş/çıkış aktivitesi bulunmuyor.",
-      });
-      return;
-    }
-
-    const logs = fs
-      .readFileSync(logFilePath, "utf8")
-      .split("\n")
-      .filter((line) => line.trim() !== "");
-
-    if (logs.length === 0) {
-      embed.addFields({
-        name: "📊 Bugünkü Oyuncu Aktivitesi",
-        value: "Bugün hiç oyuncu giriş/çıkış aktivitesi kaydedilmemiş.",
-      });
-      return;
-    }
-
-    // Son 10 aktiviteyi göster
-    const maxEntries = Math.min(10, logs.length);
-    const lastEntries = logs.slice(-maxEntries);
-
-    embed.addFields({
-      name: `📊 Bugünkü Oyuncu Aktivitesi (Son ${maxEntries}/${logs.length})`,
-      value: lastEntries.join("\n"),
-    });
-  } catch (error) {
-    console.error(
-      "❌ Oyuncu aktivite istatistikleri eklenirken hata:",
-      error.message
-    );
-    embed.addFields({
-      name: "📊 Bugünkü Oyuncu Aktivitesi",
-      value: "Aktivite verileri yüklenirken bir hata oluştu.",
-    });
-  }
 }
 
 /**
