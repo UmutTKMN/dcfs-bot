@@ -47,7 +47,8 @@ echo ║ 2. Botu Watchdog İle Başlat (Önerilen)        ║
 echo ║ 3. Veritabanını Güncelle                      ║
 echo ║ 4. Bot Loglarını Görüntüle                    ║
 echo ║ 5. .env Dosyasını Düzenle                     ║
-echo ║ 6. Çıkış                                      ║
+echo ║ 6. Botu Bakım Modunda Başlat                  ║
+echo ║ 7. Çıkış                                      ║
 echo ╚═══════════════════════════════════════════════╝
 echo.
 
@@ -58,7 +59,8 @@ if "%choice%"=="2" goto start_watchdog
 if "%choice%"=="3" goto update_db
 if "%choice%"=="4" goto view_logs
 if "%choice%"=="5" goto edit_env
-if "%choice%"=="6" goto exit
+if "%choice%"=="6" goto maintenance_mode
+if "%choice%"=="7" goto exit
 goto menu
 
 :start_bot
@@ -127,6 +129,23 @@ goto menu
 cls
 echo .env dosyası açılıyor...
 notepad .env
+cls
+goto menu
+
+:maintenance_mode
+cls
+echo Bot bakım modunda başlatılıyor...
+powershell -Command "(Get-Content .env) -replace 'FS25_BOT_MAINTENANCE_MODE=.*', 'FS25_BOT_MAINTENANCE_MODE=true' | Set-Content .env"
+echo Bakım modu aktif edildi.
+echo Bot çalışırken bu pencereyi kapatmayın!
+echo Durdurmak için CTRL+C tuşlarına basın.
+echo.
+start "FS25 Discord Bot (Bakım Modu)" /wait node ./src/server.js
+echo.
+echo Bot durduruldu. Bakım modu kapatılıyor...
+powershell -Command "(Get-Content .env) -replace 'FS25_BOT_MAINTENANCE_MODE=.*', 'FS25_BOT_MAINTENANCE_MODE=false' | Set-Content .env"
+echo Ana menüye dönmek için bir tuşa basın.
+pause > nul
 cls
 goto menu
 

@@ -36,9 +36,7 @@ const CONFIG = {
   CAREER_SAVEGAME_URL: process.env.FS25_BOT_URL_CAREER_SAVEGAME,
   UPTIME_FILE: process.env.FS25_BOT_UPTIME_FILE,
   DB_PATH: process.env.FS25_BOT_DB_PATH,
-  DAILY_SUMMARY_CHANNEL_ID: process.env.FS25_BOT_DAILY_SUMMARY_CHANNEL_ID,
-  UPDATE_CHANNEL_ID: process.env.FS25_BOT_UPDATE_CHANNEL_ID,
-  PLAYER_ACTIVITY_CHANNEL_ID: process.env.FS25_BOT_PLAYER_ACTIVITY_CHANNEL_ID,
+
   DISCORD_SERVER_NAME: process.env.FS25_BOT_DISCORD_SERVER_NAME,
   DISCORD_CHANNEL_NAME: process.env.FS25_BOT_DISCORD_CHANNEL_NAME,
   PLAYER_LOGS_DIR: process.env.FS25_BOT_PLAYER_LOGS_DIR || "./logs/players",
@@ -54,8 +52,11 @@ const CONFIG = {
     process.env.FS25_BOT_DISABLE_SAVEGAME_MESSAGES === "true",
   DISABLE_UNREACHABLE_FOUND_MESSAGES:
     process.env.FS25_BOT_DISABLE_UNREACHABLE_FOUND_MESSAGES === "true",
-  PURGE_ON_STARTUP:
-    process.env.FS25_BOT_PURGE_DISCORD_CHANNEL_ON_STARTUP === "true",
+
+  UPDATE_CHANNEL_ID: process.env.FS25_BOT_UPDATE_CHANNEL_ID,
+  DAILY_SUMMARY_CHANNEL_ID: process.env.FS25_BOT_DAILY_SUMMARY_CHANNEL_ID,
+  MODS_CHANNEL_ID: process.env.FS25_BOT_MODS_CHANNEL_ID,
+  PLAYER_ACTIVITY_CHANNEL_ID: process.env.FS25_BOT_PLAYER_ACTIVITY_CHANNEL_ID,
 };
 
 // State variables
@@ -125,9 +126,8 @@ function logPlayerActivity(playerName, action) {
     const today = new Date().toISOString().split("T")[0];
     const logFilePath = path.join(logDir, `player_activity_${today}.log`);
     const timestamp = new Date().toISOString().replace("T", " ").substr(0, 19);
-    const logMessage = `[${timestamp}] ${playerName} ${
-      action === "join" ? "sunucuya katıldı" : "sunucudan ayrıldı"
-    }\n`;
+    const logMessage = `[${timestamp}] ${playerName} ${action === "join" ? "sunucuya katıldı" : "sunucudan ayrıldı"
+      }\n`;
     fs.appendFileSync(logFilePath, logMessage);
   } catch (error) {
     console.error(`❌ Oyuncu aktivitesi loglanırken hata: ${error.message}`);
@@ -164,22 +164,6 @@ function sendPlayerActivityEmbed(playerName, action, durationMs = null) {
       `❌ Oyuncu aktivite embed mesajı gönderilirken hata: ${error.message}`
     );
   });
-}
-
-function getTodayPlayerActivityLogs() {
-  try {
-    const today = new Date().toISOString().split("T")[0];
-    const logFilePath = path.join(
-      CONFIG.PLAYER_LOGS_DIR,
-      `player_activity_${today}.log`
-    );
-    if (!fs.existsSync(logFilePath))
-      return "Bugün için oyuncu aktivitesi kaydı bulunmuyor.";
-    return fs.readFileSync(logFilePath, "utf8");
-  } catch (error) {
-    console.error(`❌ Bugünkü log dosyası okunurken hata: ${error.message}`);
-    return "Log dosyası okunamadı.";
-  }
 }
 
 // Detect player join/leave events and send notification to Discord
@@ -756,7 +740,7 @@ const update = () => {
             if (updateEmbed) {
               sendMessage(updateEmbed);
             }
-            sendModLinksEmbed(data, previousMods, "1316793481812775002");
+            sendModLinksEmbed(data, previousMods, CONFIG.MODS_CHANNEL_ID);
             db = data;
             fs.writeFileSync(
               CONFIG.DB_PATH,
@@ -1017,18 +1001,6 @@ client.on("ready", async () => {
     );
   }
 
-  // Setup message purging
-  // if (willPurge()) { // devre dışı
-  //   if (CONFIG.PURGE_ON_STARTUP) {
-  //     attemptPurge();
-  //   } else {
-  //     nextPurge = getNextPurge();
-  //     console.log(
-  //       `✅ İlk temizleme ${new Date(nextPurge)} tarihinde planlandı`
-  //     );
-  //   }
-  // }
-
   // Schedule daily stats message
   scheduleDailyMessage(
     CONFIG.DAILY_STATS_HOUR,
@@ -1054,30 +1026,10 @@ client.on("ready", async () => {
     console.log(
       `📊 Log dosyası boyutu: ${(logStats.size / 1024).toFixed(2)} KB`
     );
-
-    // Son 5 aktiviteyi göster
-    const recentLogs = getTodayPlayerActivityLogs()
-      .split("\n")
-      .filter((line) => line.trim() !== "");
-    const logCount = recentLogs.length;
-
-    if (logCount > 0) {
-      console.log(`📝 Bugün toplam ${logCount} aktivite kaydedilmiş.`);
-      console.log("Son aktiviteler:");
-      recentLogs.slice(-5).forEach((log) => console.log(`  ${log}`));
-    } else {
-      console.log("📝 Bugün henüz aktivite kaydedilmemiş.");
-    }
-  } else {
-    console.log(`📝 Bugün (${today}) için henüz log dosyası oluşturulmamış.`);
   }
-  console.log("=============================================");
-
   update(); // Initial update
   intervalTimer = setInterval(update, CONFIG.POLL_INTERVAL_MINUTES * 60000);
-
   startHeartbeat();
-
   await registerSlashCommands();
 });
 
@@ -1099,7 +1051,7 @@ client.on("interactionCreate", async (interaction) => {
     interaction.isStringSelectMenu() &&
     interaction.customId === "temizle_menu"
   ) {
-    // Sadece komutu kullanan kişi seçim yapabilsin
+    // Temizleme menüsü için
     if (interaction.user.id !== interaction.message.interaction.user.id) {
       return interaction.reply({
         content: "Bu menüyü sadece komutu kullanan kişi kullanabilir.",
@@ -1113,31 +1065,55 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
+if (process.env.FS25_BOT_MAINTENANCE_MODE === 'true') {
+  const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+  const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
+  const contactid = 'poncikpanda';
+
+  client.once('ready', () => {
+    const channelId = process.env.FS25_BOT_UPDATE_CHANNEL_ID;
+    const channel = client.channels.cache.get(channelId);
+    if (channel) {
+      const embed = new EmbedBuilder()
+        .setColor('#ff9900')
+        .setTitle(':tools: Bot Bakım Modunda')
+        .setDescription('Bot şu anda bakımda. Lütfen rahatsız etmeyin.\n\nİletişim için: `' + contactid + '`')
+        .setTimestamp();
+      channel.send({ embeds: [embed] });
+    }
+    client.user.setPresence({
+      activities: [
+        { name: 'BAKIM MODU', type: 3 }
+      ],
+      status: 'dnd'
+    });
+  });
+
+  client.login(process.env.FS25_BOT_DISCORD_TOKEN);
+  return;
+}
 // Warning event
 client.on("warn", (info) => {
   console.warn("⚠️ Discord istemci uyarısı:", info);
 });
-
-// Process handlers for graceful shutdown
+// Error event
 process.on("SIGINT", async () => {
   console.log("SIGINT alındı. Bot kapatılıyor...");
   process.exit(0);
 });
-
+// Error event
 process.on("SIGTERM", async () => {
   console.log("SIGTERM alındı. Bot kapatılıyor...");
   process.exit(0);
 });
-
+// Unhandled rejection event
 process.on("beforeExit", (code) => {
   console.log(`İşlem beforeExit olayı, kod: ${code}`);
 });
-
 // Improve the error handling
 process.on("uncaughtException", (error) => {
   console.error("❌ Yakalanmayan Hata:", error);
-  // Don't exit immediately on uncaught exception
-  // Instead log it and let the reconnection mechanism handle it if needed
   if (
     error.message.includes("ECONNRESET") ||
     error.message.includes("network") ||
@@ -1146,7 +1122,6 @@ process.on("uncaughtException", (error) => {
     handleReconnection();
   }
 });
-
 // Add heartbeat mechanism
 const HEARTBEAT_INTERVAL = 5 * 60 * 1000; // 5 minutes
 let heartbeatTimer = null;
@@ -1158,8 +1133,6 @@ const startHeartbeat = () => {
 
   heartbeatTimer = setInterval(() => {
     console.log("💓 Bot kalp atışı - hala çalışıyor");
-
-    // Check if client is connected and reconnect if needed
     if (!client.isReady()) {
       console.warn(
         "⚠️ Kalp atışı kontrolü sırasında Discord istemcisi hazır değil"
@@ -1169,13 +1142,11 @@ const startHeartbeat = () => {
   }, HEARTBEAT_INTERVAL);
 
   console.log(
-    `✅ Kalp atışı başlatıldı, her ${
-      HEARTBEAT_INTERVAL / 1000 / 60
+    `✅ Kalp atışı başlatıldı, her ${HEARTBEAT_INTERVAL / 1000 / 60
     } dakikada bir kontrol ediliyor`
   );
 };
-
-// Add cleanup for the heartbeat timer
+// Exit event
 onExit(() => {
   if (heartbeatTimer) {
     clearInterval(heartbeatTimer);
@@ -1185,5 +1156,4 @@ onExit(() => {
   client.destroy();
 });
 
-// Start the initialization process
 init();
