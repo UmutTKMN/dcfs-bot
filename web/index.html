@@ -16,51 +16,88 @@
     .mod-desc { color: #b0b8c1; margin-top: 4px; }
     .download-btn { background: #7ecfff; color: #181c20; border: none; border-radius: 5px; padding: 10px 18px; font-size: 1em; cursor: pointer; transition: background 0.2s; }
     .download-btn:hover { background: #5bb6e6; }
+    .loading { text-align: center; color: #7ecfff; margin: 32px 0; font-size: 1.2em; }
+    .mod-desc:empty { display: none; }
+    .virtual-list-viewport { max-height: 600px; overflow-y: auto; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Mod Listesi</h1>
     <input type="text" id="search" placeholder="Mod ara...">
-    <ul class="mod-list" id="modList"></ul>
+    <div class="virtual-list-viewport"><ul class="mod-list" id="modList"></ul></div>
+    <div id="loading" class="loading">Yükleniyor...</div>
   </div>
   <script>
+    // Debounce fonksiyonu
+    function debounce(fn, delay) {
+      let timer;
+      return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+      };
+    }
     async function fetchMods() {
       const res = await fetch('/api/mods');
       return res.json();
     }
     function createDownloadUrl(name) {
-      return `https://gs-85-14-206-57.server.4netplayers.com:20820/mods/${encodeURIComponent(name)}/zip`;
+      return `https://gs-85-14-206-57.server.4netplayers.com:20820/mods/${encodeURIComponent(name)}.zip`;
     }
-    function renderMods(mods) {
+    // Sanal listeleme için parametreler
+    const ITEM_HEIGHT = 68;
+    const VISIBLE_COUNT = 12;
+    let allMods = [];
+    let filteredMods = [];
+    function renderMods(mods, scrollTop = 0) {
       const list = document.getElementById('modList');
+      const viewport = document.querySelector('.virtual-list-viewport');
+      const start = Math.floor(scrollTop / ITEM_HEIGHT);
+      const end = Math.min(start + VISIBLE_COUNT, mods.length);
       list.innerHTML = '';
       if (mods.length === 0) {
         list.innerHTML = '<li style="text-align:center;color:#b0b8c1">Sonuç bulunamadı.</li>';
         return;
       }
-      mods.forEach(mod => {
+      // Boş alanı doldurmak için padding
+      list.style.paddingTop = (start * ITEM_HEIGHT) + 'px';
+      list.style.paddingBottom = ((mods.length - end) * ITEM_HEIGHT) + 'px';
+      for (let i = start; i < end; i++) {
+        const mod = mods[i];
         const li = document.createElement('li');
         li.className = 'mod-item';
         li.innerHTML = `
           <div class="mod-info">
             <div class="mod-name">${mod.name || mod.id || 'İsimsiz Mod'}</div>
-            <div class="mod-desc">${mod.description || ''}</div>
+            <div class="mod-desc">${mod.description ? mod.description : ''}</div>
           </div>
           <a class="download-btn" href="${createDownloadUrl(mod.name || mod.id)}" target="_blank">İndir</a>
         `;
         list.appendChild(li);
-      });
+      }
     }
-    let allMods = [];
-    document.getElementById('search').addEventListener('input', function() {
-      const q = this.value.toLowerCase();
-      const filtered = allMods.filter(mod => (mod.name || mod.id || '').toLowerCase().includes(q));
-      renderMods(filtered);
+    // Arama kutusu için debounce ile performanslı filtreleme
+    const searchInput = document.getElementById('search');
+    const viewport = document.querySelector('.virtual-list-viewport');
+    function doFilter() {
+      const q = searchInput.value.toLowerCase();
+      filteredMods = allMods.filter(mod => (mod.name || mod.id || '').toLowerCase().includes(q));
+      renderMods(filteredMods, viewport.scrollTop);
+    }
+    searchInput.addEventListener('input', debounce(doFilter, 200));
+    // Sanal listeleme için scroll event
+    viewport.addEventListener('scroll', () => {
+      renderMods(filteredMods, viewport.scrollTop);
     });
+    // Yükleniyor animasyonu ve veri çekme
+    document.getElementById('loading').style.display = 'block';
     fetchMods().then(mods => {
       allMods = mods;
+      filteredMods = mods;
+      document.getElementById('loading').style.display = 'none';
       renderMods(mods);
+    }).catch(() => {
+      document.getElementById('loading').textContent = 'Modlar yüklenemedi.';
     });
   </script>
 </body>
