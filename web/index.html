@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mod Listesi</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #181c20; color: #f1f1f1; margin: 0; padding: 0; }
+    .container { max-width: 700px; margin: 40px auto; background: #23272b; border-radius: 10px; box-shadow: 0 2px 12px #0008; padding: 32px; }
+    h1 { text-align: center; color: #7ecfff; }
+    input[type="text"] { width: 100%; padding: 10px; border-radius: 5px; border: none; margin-bottom: 24px; font-size: 1.1em; }
+    .mod-list { list-style: none; padding: 0; }
+    .mod-item { background: #2c3136; margin-bottom: 16px; border-radius: 7px; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .mod-info { flex: 1; }
+    .mod-name { font-size: 1.2em; font-weight: bold; color: #7ecfff; }
+    .mod-desc { color: #b0b8c1; margin-top: 4px; }
+    .download-btn { background: #7ecfff; color: #181c20; border: none; border-radius: 5px; padding: 10px 18px; font-size: 1em; cursor: pointer; transition: background 0.2s; }
+    .download-btn:hover { background: #5bb6e6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Mod Listesi</h1>
+    <input type="text" id="search" placeholder="Mod ara...">
+    <ul class="mod-list" id="modList"></ul>
+  </div>
+  <script>
+    async function fetchMods() {
+      const res = await fetch('/api/mods');
+      return res.json();
+    }
+    function createDownloadUrl(name) {
+      return `https://gs-85-14-206-57.server.4netplayers.com:20820/mods/${encodeURIComponent(name)}/zip`;
+    }
+    function renderMods(mods) {
+      const list = document.getElementById('modList');
+      list.innerHTML = '';
+      if (mods.length === 0) {
+        list.innerHTML = '<li style="text-align:center;color:#b0b8c1">Sonuç bulunamadı.</li>';
+        return;
+      }
+      mods.forEach(mod => {
+        const li = document.createElement('li');
+        li.className = 'mod-item';
+        li.innerHTML = `
+          <div class="mod-info">
+            <div class="mod-name">${mod.name || mod.id || 'İsimsiz Mod'}</div>
+            <div class="mod-desc">${mod.description || ''}</div>
+          </div>
+          <a class="download-btn" href="${createDownloadUrl(mod.name || mod.id)}" target="_blank">İndir</a>
+        `;
+        list.appendChild(li);
+      });
+    }
+    let allMods = [];
+    document.getElementById('search').addEventListener('input', function() {
+      const q = this.value.toLowerCase();
+      const filtered = allMods.filter(mod => (mod.name || mod.id || '').toLowerCase().includes(q));
+      renderMods(filtered);
+    });
+    fetchMods().then(mods => {
+      allMods = mods;
+      renderMods(mods);
+    });
+  </script>
+</body>
+</html>
