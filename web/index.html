@@ -5,20 +5,125 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mod Listesi</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #181c20; color: #f1f1f1; margin: 0; padding: 0; }
-    .container { max-width: 700px; margin: 40px auto; background: #23272b; border-radius: 10px; box-shadow: 0 2px 12px #0008; padding: 32px; }
-    h1 { text-align: center; color: #7ecfff; }
-    input[type="text"] { width: 100%; padding: 10px; border-radius: 5px; border: none; margin-bottom: 24px; font-size: 1.1em; }
-    .mod-list { list-style: none; padding: 0; }
-    .mod-item { background: #2c3136; margin-bottom: 16px; border-radius: 7px; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; }
-    .mod-info { flex: 1; }
-    .mod-name { font-size: 1.2em; font-weight: bold; color: #7ecfff; }
-    .mod-desc { color: #b0b8c1; margin-top: 4px; }
-    .download-btn { background: #7ecfff; color: #181c20; border: none; border-radius: 5px; padding: 10px 18px; font-size: 1em; cursor: pointer; transition: background 0.2s; }
-    .download-btn:hover { background: #5bb6e6; }
-    .loading { text-align: center; color: #7ecfff; margin: 32px 0; font-size: 1.2em; }
+    body {
+      font-family: 'Inter', Arial, sans-serif;
+      background: #181a1b;
+      color: #e6e6e6;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 480px;
+      margin: 48px auto;
+      background: #202223;
+      border-radius: 18px;
+      box-shadow: 0 2px 16px 0 #0004;
+      padding: 32px 20px 24px 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #6ec1e4;
+      font-size: 2.1em;
+      font-weight: 600;
+      margin-bottom: 28px;
+      letter-spacing: 0.01em;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: none;
+      background: #232526;
+      color: #e6e6e6;
+      font-size: 1.08em;
+      margin-bottom: 22px;
+      outline: none;
+      transition: background 0.2s;
+    }
+    input[type="text"]:focus {
+      background: #26292b;
+    }
+    .virtual-list-viewport {
+      max-height: 420px;
+      overflow-y: auto;
+      border-radius: 10px;
+      background: none;
+    }
+    .mod-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .mod-item {
+      background: #232526;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      padding: 15px 16px 13px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: none;
+      border: 1px solid #232526;
+      transition: border 0.18s, background 0.18s;
+    }
+    .mod-item:hover {
+      border: 1px solid #6ec1e4;
+      background: #23282b;
+    }
+    .mod-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .mod-name {
+      font-size: 1.08em;
+      font-weight: 500;
+      color: #6ec1e4;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .mod-desc {
+      color: #b0b8c1;
+      font-size: 0.98em;
+      margin-top: 2px;
+      opacity: 0.82;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .mod-desc:empty { display: none; }
-    .virtual-list-viewport { max-height: 600px; overflow-y: auto; }
+    .download-btn {
+      background: #232526;
+      color: #6ec1e4;
+      border: 1px solid #6ec1e4;
+      border-radius: 7px;
+      padding: 8px 18px;
+      font-size: 1em;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.18s, color 0.18s, border 0.18s;
+      outline: none;
+      text-decoration: none;
+      margin-left: 18px;
+    }
+    .download-btn:hover {
+      background: #6ec1e4;
+      color: #181a1b;
+      border: 1px solid #6ec1e4;
+    }
+    .loading {
+      text-align: center;
+      color: #6ec1e4;
+      margin: 32px 0 0 0;
+      font-size: 1.08em;
+      letter-spacing: 0.01em;
+    }
+    @media (max-width: 600px) {
+      .container { max-width: 98vw; padding: 16px 2vw 12px 2vw; }
+      .virtual-list-viewport { max-height: 60vh; }
+    }
   </style>
 </head>
 <body>
