@@ -38,16 +38,17 @@
         try {
             const res = await fetch('/api/server');
             const data = await res.json();
+            const server = data.server || data; // Hem eski hem yeni yapı için uyumlu
             document.getElementById('serverInfoLoading').style.display = 'none';
             const content = document.getElementById('serverInfoContent');
             content.style.display = '';
-            document.getElementById('serverName').textContent = data.name;
-            document.getElementById('serverGame').textContent = data.game;
-            document.getElementById('serverVersion').textContent = data.version;
-            document.getElementById('serverMap').textContent = data.mapName;
+            document.getElementById('serverName').textContent = server.name;
+            document.getElementById('serverGame').textContent = server.game;
+            document.getElementById('serverVersion').textContent = server.version;
+            document.getElementById('serverMap').textContent = server.mapName;
             const statusEl = document.getElementById('serverStatus');
-            statusEl.textContent = data.online ? 'Çevrimiçi' : 'Kapalı';
-            statusEl.className = data.online ? 'text-green-400 font-bold' : 'text-red-400 font-bold';
+            statusEl.textContent = server.online ? 'Çevrimiçi' : 'Kapalı';
+            statusEl.className = server.online ? 'text-green-400 font-bold' : 'text-red-400 font-bold';
         } catch {
             document.getElementById('serverInfoLoading').textContent = 'Sunucu bilgisi alınamadı.';
         }
