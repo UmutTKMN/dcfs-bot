@@ -52,20 +52,20 @@ module.exports = {
     }
     // Dosya adını benzersiz yap
     const fileName = `gallery_${Date.now()}${ext}`;
-    const filePath = path.join(__dirname, "../data/assets", fileName);
+    const filePath = path.join(__dirname, "../../web/assets/gallery", fileName);
     // Resmi indir
     const res = await fetch(attachment.url);
     const buffer = Buffer.from(await res.arrayBuffer());
     fs.writeFileSync(filePath, buffer);
     // Galeri JSON güncelle
-    const galleryJsonPath = path.join(__dirname, "../data/fs25_gallery.json");
+    const galleryJsonPath = path.join(__dirname, "../../data/fs25_gallery.json");
     let gallery = [];
     if (fs.existsSync(galleryJsonPath)) {
       try {
         gallery = JSON.parse(fs.readFileSync(galleryJsonPath, "utf8"));
-      } catch {}
+      } catch { }
     }
-    gallery.push({ src: `./assets/${fileName}`, caption });
+    gallery.push({ src: `./assets/gallery/${fileName}`, caption });
     fs.writeFileSync(galleryJsonPath, JSON.stringify(gallery, null, 2), "utf8");
     await interaction.reply({
       content: "Resim başarıyla galeriye eklendi!",

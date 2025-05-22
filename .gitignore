@@ -6,6 +6,7 @@ logs
 data
 node_modules
 backup
+web/assets/gallery
 
 package-lock.json
 .gitignore
