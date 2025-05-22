@@ -4,39 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modlar | Dostlar Konağı FS25</title>
-    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./tailwind.output.css">
 </head>
-<body>
-    <nav class="main-nav">
-      <a href="home.html" class="nav-link">Anasayfa</a>
-      <a href="server.html" class="nav-link">Sunucu Hakkında</a>
-      <a href="gallery.html" class="nav-link">Galeri</a>
-      <a href="mods.html" class="nav-link active">Modlar</a>
-      <a href="rules.html" class="nav-link">Kurallar</a>
-      <a href="contact.html" class="nav-link">İletişim</a>
+<body class="bg-gray-950 text-gray-100 font-sans min-h-screen">
+    <nav class="flex flex-wrap justify-center gap-3 py-6 mb-8 bg-gray-900/80 rounded-b-xl shadow">
+        <a href="home.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Anasayfa</a>
+        <a href="server.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Sunucu Hakkında</a>
+        <a href="gallery.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Galeri</a>
+        <a href="mods.html" class="px-4 py-2 rounded-lg font-medium text-blue-400 bg-gray-800">Modlar</a>
+        <a href="rules.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Kurallar</a>
+        <a href="contact.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">İletişim</a>
     </nav>
-    <div class="container">
-        <h2>Modlar</h2>
-        <div class="filter-bar">
-            <input type="text" id="search" placeholder="Mod ara...">
-            <select id="authorFilter" class="filter-select">
+    <main class="max-w-3xl mx-auto px-4">
+        <h2 class="text-xl font-bold text-blue-400 mb-6 text-center">Modlar</h2>
+        <div class="flex flex-wrap gap-3 mb-6 items-center justify-center">
+            <input type="text" id="search" placeholder="Mod ara..." class="px-3 py-2 rounded bg-gray-800 text-gray-100 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[140px] max-w-[220px]">
+            <select id="authorFilter" class="px-3 py-2 rounded bg-gray-800 text-gray-100 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[110px] max-w-[180px]">
                 <option value="">Tüm Yazarlar</option>
             </select>
-            <select id="sortSelect" class="filter-select">
+            <select id="sortSelect" class="px-3 py-2 rounded bg-gray-800 text-gray-100 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[110px] max-w-[180px]">
                 <option value="name-asc">İsme Göre (A-Z)</option>
                 <option value="name-desc">İsme Göre (Z-A)</option>
                 <option value="author-asc">Yazara Göre (A-Z)</option>
                 <option value="author-desc">Yazara Göre (Z-A)</option>
             </select>
-            <a href="https://gs-85-14-206-57.server.4netplayers.com:20820/all_mods_download?onlyActive=true" target="_blank" class="download-btn">Tüm Modları İndir</a>
+            <a href="https://gs-85-14-206-57.server.4netplayers.com:20820/all_mods_download?onlyActive=true" target="_blank" class="inline-block px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow hover:bg-blue-600 transition">Tüm Modları İndir</a>
         </div>
-        <div class="virtual-list-viewport">
-            <ul class="mod-list" id="modList"></ul>
+        <div class="overflow-x-auto rounded-xl shadow mb-4">
+            <ul class="divide-y divide-gray-800" id="modList"></ul>
         </div>
-        <div id="loading" class="loading">Yükleniyor...</div>
-        <div id="modInfo" class="mod-info-bar"></div>
-    </div>
-    <footer>
+        <div id="loading" class="text-center text-blue-400 font-semibold my-4">Yükleniyor...</div>
+        <div id="modInfo" class="text-center text-gray-400 text-sm mb-8"></div>
+    </main>
+    <footer class="text-center text-xs text-gray-500 py-6 mt-8">
         Farming Simulator 2025 © | Dostlar Konağı mod koleksiyonu<br>
         İletişim: <b>poncikpanda</b> (Discord)
     </footer>

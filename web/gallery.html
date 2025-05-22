@@ -4,28 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Galeri | Dostlar Konağı FS25</title>
-    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./tailwind.output.css">
 </head>
-<body>
-    <nav class="main-nav">
-      <a href="home.html" class="nav-link">Anasayfa</a>
-      <a href="server.html" class="nav-link">Sunucu Hakkında</a>
-      <a href="gallery.html" class="nav-link active">Galeri</a>
-      <a href="mods.html" class="nav-link">Modlar</a>
-      <a href="rules.html" class="nav-link">Kurallar</a>
-      <a href="contact.html" class="nav-link">İletişim</a>
+<body class="bg-gray-950 text-gray-100 font-sans min-h-screen">
+    <nav class="flex flex-wrap justify-center gap-3 py-6 mb-8 bg-gray-900/80 rounded-b-xl shadow">
+        <a href="home.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Anasayfa</a>
+        <a href="server.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Sunucu Hakkında</a>
+        <a href="gallery.html" class="px-4 py-2 rounded-lg font-medium text-blue-400 bg-gray-800">Galeri</a>
+        <a href="mods.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Modlar</a>
+        <a href="rules.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Kurallar</a>
+        <a href="contact.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">İletişim</a>
     </nav>
-    <div class="container">
-        <h2>Galeri</h2>
-        <div id="galleryContent" class="gallery-grid">
-            <div class="gallery-item"><img src="./assets/gallery1.jpg" alt="Oyun içi 1"><div class="gallery-caption">Bergblick haritasında hasat zamanı</div></div>
-            <div class="gallery-item"><img src="./assets/gallery2.jpg" alt="Oyun içi 2"><div class="gallery-caption">Topluluk etkinliği</div></div>
-            <div class="gallery-item"><img src="./assets/gallery3.jpg" alt="Oyun içi 3"><div class="gallery-caption">Ortak çalışma</div></div>
-            <div class="gallery-item"><img src="./assets/gallery4.jpg" alt="Oyun içi 4"><div class="gallery-caption">Akşam manzarası</div></div>
+    <main class="max-w-3xl mx-auto px-4">
+        <h2 class="text-xl font-bold text-blue-400 mb-6 text-center">Galeri</h2>
+        <div id="galleryContent" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-4">
+            <div class="rounded-xl overflow-hidden shadow bg-gray-900 hover:scale-105 transition-transform">
+                <img src="./assets/gallery1.jpg" alt="Oyun içi 1" class="w-full h-40 object-cover">
+                <div class="p-3 text-center text-gray-200 text-sm">Bergblick haritasında hasat zamanı</div>
+            </div>
+            <div class="rounded-xl overflow-hidden shadow bg-gray-900 hover:scale-105 transition-transform">
+                <img src="./assets/gallery2.jpg" alt="Oyun içi 2" class="w-full h-40 object-cover">
+                <div class="p-3 text-center text-gray-200 text-sm">Topluluk etkinliği</div>
+            </div>
+            <div class="rounded-xl overflow-hidden shadow bg-gray-900 hover:scale-105 transition-transform">
+                <img src="./assets/gallery3.jpg" alt="Oyun içi 3" class="w-full h-40 object-cover">
+                <div class="p-3 text-center text-gray-200 text-sm">Ortak çalışma</div>
+            </div>
+            <div class="rounded-xl overflow-hidden shadow bg-gray-900 hover:scale-105 transition-transform">
+                <img src="./assets/gallery4.jpg" alt="Oyun içi 4" class="w-full h-40 object-cover">
+                <div class="p-3 text-center text-gray-200 text-sm">Akşam manzarası</div>
+            </div>
         </div>
-        <div class="gallery-info">Topluluk üyelerimizin oyun içi anları burada!<br>Daha fazla fotoğraf için Discord'a katıl.</div>
-    </div>
-    <footer>
+        <div class="text-center text-gray-400 text-sm mb-8">Topluluk üyelerimizin oyun içi anları burada!<br>Daha fazla fotoğraf için Discord'a katıl.</div>
+    </main>
+    <footer class="text-center text-xs text-gray-500 py-6 mt-8">
         Farming Simulator 2025 © | Dostlar Konağı mod koleksiyonu<br>
         İletişim: <b>poncikpanda</b> (Discord)
     </footer>

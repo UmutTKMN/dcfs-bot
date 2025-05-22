@@ -5,43 +5,15 @@
     <meta charset="UTF-8">
     <meta http-equiv="refresh" content="0; url=home.html">
     <title>Dostlar Konağı FS25 | Yönlendiriliyor...</title>
-    <link rel="stylesheet" href="./style.css">
-    <style>
-        body {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-block-size: 100vh;
-            background: var(--main-bg);
-            color: var(--main-fg);
-            font-family: 'Segoe UI', Arial, sans-serif;
-        }
-
-        .redirect-box {
-            background: var(--card-bg);
-            padding: 36px 48px;
-            border-radius: 16px;
-            box-shadow: var(--shadow);
-            text-align: center;
-        }
-
-        .redirect-box h1 {
-            color: var(--accent);
-            margin-block-end: 18px;
-        }
-
-        .redirect-box a {
-            color: var(--accent);
-            text-decoration: underline;
-        }
-    </style>
+    <link rel="stylesheet" href="./tailwind.output.css">
 </head>
 
-<body>
-    <div class="redirect-box">
-        <h1>Dostlar Konağı FS25</h1>
-        <p>Ana sayfaya yönlendiriliyorsunuz...</p>
-        <p>Eğer otomatik yönlendirilmezseniz <a href="home.html">buraya tıklayın</a>.</p>
+<body class="min-h-screen flex items-center justify-center bg-gray-950 text-gray-100 font-sans">
+    <div class="bg-gray-900 rounded-2xl shadow-xl px-10 py-12 text-center max-w-md w-full">
+        <h1 class="text-2xl font-bold text-blue-400 mb-4">Dostlar Konağı FS25</h1>
+        <p class="mb-2 text-gray-300">Ana sayfaya yönlendiriliyorsunuz...</p>
+        <p class="text-sm text-gray-400">Eğer otomatik yönlendirilmezseniz <a href="home.html"
+                class="text-blue-400 underline">buraya tıklayın</a>.</p>
     </div>
 </body>
 
