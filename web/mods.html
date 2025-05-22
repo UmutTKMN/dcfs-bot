@@ -6,15 +6,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sunucu & Modlar | Dostlar Konağı FS25</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background: inherit;
+            filter: blur(8px) brightness(0.7);
+            pointer-events: none;
+        }
+
+        main,
+        nav,
+        footer {
+            position: relative;
+            z-index: 1;
+        }
+    </style>
 </head>
 
-<body class="bg-gray-950 text-gray-100 font-sans min-h-screen">
+<body class="bg-gray-950 text-gray-100 font-sans min-h-screen relative"
+    style="background-image: url('./assets/fs-25-background.png'); background-size: cover; background-position: center; background-attachment: fixed;">
     <nav class="flex flex-wrap justify-center gap-3 py-6 mb-8 bg-gray-900/80 rounded-b-xl shadow">
-        <a href="home.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Anasayfa</a>
-        <a href="mods.html" class="px-4 py-2 rounded-lg font-medium text-blue-400 bg-gray-800">Sunucu & Modlar</a>
-        <a href="gallery.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Galeri</a>
-        <a href="rules.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Kurallar</a>
-        <a href="contact.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">İletişim</a>
+        <a href="home.html" class="px-4 py-2 rounded font-medium text-gray-200 hover:bg-gray-800">Anasayfa</a>
+        <a href="mods.html" class="px-4 py-2 rounded font-medium text-blue-400 bg-gray-800">Sunucu & Modlar</a>
+        <a href="gallery.html" class="px-4 py-2 rounded font-medium text-gray-200 hover:bg-gray-800">Galeri</a>
+        <a href="rules.html" class="px-4 py-2 rounded font-medium text-gray-200 hover:bg-gray-800">Kurallar</a>
+        <a href="about.html" class="px-4 py-2 rounded font-medium text-gray-200 hover:bg-gray-800">Hakkında</a>
     </nav>
     <main class="max-w-3xl mx-auto px-4">
         <!-- Sunucu Hakkında Bölümü -->
@@ -28,7 +47,8 @@
                     <div class="mb-1"><b>Sürüm:</b> <span id="serverVersion"></span></div>
                     <div class="mb-1"><b>Harita:</b> <span id="serverMap"></span></div>
                     <div class="mb-2"><b>Durum:</b> <span id="serverStatus"></span></div>
-                    <div class="text-gray-300 text-sm">Dostlar Konağı FS25 sunucusu, topluluk için optimize edilmiş, güncel ve güvenli bir oyun ortamı sunar.</div>
+                    <div class="text-gray-300 text-sm">Dostlar Konağı FS25 sunucusu, topluluk için optimize edilmiş,
+                        güncel ve güvenli bir oyun ortamı sunar.</div>
                 </div>
             </div>
         </section>
@@ -37,10 +57,10 @@
             <h2 class="text-xl font-bold text-blue-400 mb-6 text-center">Modlar</h2>
             <div class="flex flex-wrap gap-3 mb-6 items-center justify-center">
                 <input type="text" id="search" placeholder="Mod ara..."
-                    class="px-3 py-2 rounded bg-gray-800 text-gray-100 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[140px] max-w-[220px]">
+                    class="px-3 py-2 rounded bg-gray-800 text-gray-100 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition w-full sm:w-1/2">
                 <a href="https://gs-85-14-206-57.server.4netplayers.com:20820/all_mods_download?onlyActive=true"
                     target="_blank"
-                    class="inline-block px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow hover:bg-blue-600 transition">Tüm
+                    class="inline-block px-4 py-2 bg-blue-500 text-white font-semibold rounded shadow hover:bg-blue-600 transition">Tüm
                     Modları İndir</a>
             </div>
             <div class="overflow-x-auto rounded-xl shadow mb-4">
@@ -55,76 +75,76 @@
         İletişim: <b>poncikpanda</b> (Discord)
     </footer>
     <script>
-    // Sunucu Bilgisi ve Modlar
-    async function fetchModsAndServer() {
-        document.getElementById('loading').style.display = 'block';
-        try {
+        // Sunucu Bilgisi ve Modlar
+        async function fetchModsAndServer() {
+            document.getElementById('loading').style.display = 'block';
+            try {
+                const res = await fetch('/api/mods');
+                const modsRaw = await res.json();
+                // Sunucu bilgisi ilk modun başında veya ayrı bir modül olarak geliyorsa
+                // Burada örnek olarak ilk modun başında server bilgisi var varsayalım:
+                // { server: {...}, mods: [...] }
+                // Ama senin sisteminde sadece modlar array'i geliyor, sunucu bilgisi yoksa, ilk modun başında server bilgisi yoksa, sunucu bilgisi gösterilmez.
+                // Eğer modlar array'inin başında server bilgisi varsa:
+                let server = null;
+                let mods = modsRaw;
+                if (modsRaw.length && modsRaw[0] && modsRaw[0]._isServerInfo) {
+                    server = modsRaw[0];
+                    mods = modsRaw.slice(1);
+                }
+                // Eğer modlar array'inde server bilgisi yoksa, sunucu kutusunu gizle
+                if (server) {
+                    document.getElementById('serverInfoLoading').style.display = 'none';
+                    const content = document.getElementById('serverInfoContent');
+                    content.style.display = '';
+                    document.getElementById('serverName').textContent = server.name;
+                    document.getElementById('serverGame').textContent = server.game;
+                    document.getElementById('serverVersion').textContent = server.version;
+                    document.getElementById('serverMap').textContent = server.mapName;
+                    const statusEl = document.getElementById('serverStatus');
+                    statusEl.textContent = server.online ? 'Çevrimiçi' : 'Kapalı';
+                    statusEl.className = server.online ? 'text-green-400 font-bold' : 'text-red-400 font-bold';
+                } else {
+                    document.getElementById('serverInfoBox').style.display = 'none';
+                }
+                allMods = mods;
+                filteredMods = mods;
+                document.getElementById('loading').style.display = 'none';
+                renderMods(mods);
+                updateModInfo();
+            } catch {
+                document.getElementById('loading').textContent = 'Modlar veya sunucu bilgisi yüklenemedi.';
+            }
+        }
+        // Modlar
+        function debounce(fn, delay) {
+            let timer;
+            return function (...args) {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+        async function fetchMods() {
             const res = await fetch('/api/mods');
-            const modsRaw = await res.json();
-            // Sunucu bilgisi ilk modun başında veya ayrı bir modül olarak geliyorsa
-            // Burada örnek olarak ilk modun başında server bilgisi var varsayalım:
-            // { server: {...}, mods: [...] }
-            // Ama senin sisteminde sadece modlar array'i geliyor, sunucu bilgisi yoksa, ilk modun başında server bilgisi yoksa, sunucu bilgisi gösterilmez.
-            // Eğer modlar array'inin başında server bilgisi varsa:
-            let server = null;
-            let mods = modsRaw;
-            if (modsRaw.length && modsRaw[0] && modsRaw[0]._isServerInfo) {
-                server = modsRaw[0];
-                mods = modsRaw.slice(1);
-            }
-            // Eğer modlar array'inde server bilgisi yoksa, sunucu kutusunu gizle
-            if (server) {
-                document.getElementById('serverInfoLoading').style.display = 'none';
-                const content = document.getElementById('serverInfoContent');
-                content.style.display = '';
-                document.getElementById('serverName').textContent = server.name;
-                document.getElementById('serverGame').textContent = server.game;
-                document.getElementById('serverVersion').textContent = server.version;
-                document.getElementById('serverMap').textContent = server.mapName;
-                const statusEl = document.getElementById('serverStatus');
-                statusEl.textContent = server.online ? 'Çevrimiçi' : 'Kapalı';
-                statusEl.className = server.online ? 'text-green-400 font-bold' : 'text-red-400 font-bold';
-            } else {
-                document.getElementById('serverInfoBox').style.display = 'none';
-            }
-            allMods = mods;
-            filteredMods = mods;
-            document.getElementById('loading').style.display = 'none';
-            renderMods(mods);
-            updateModInfo();
-        } catch {
-            document.getElementById('loading').textContent = 'Modlar veya sunucu bilgisi yüklenemedi.';
+            return res.json();
         }
-    }
-    // Modlar
-    function debounce(fn, delay) {
-        let timer;
-        return function (...args) {
-            clearTimeout(timer);
-            timer = setTimeout(() => fn.apply(this, args), delay);
-        };
-    }
-    async function fetchMods() {
-        const res = await fetch('/api/mods');
-        return res.json();
-    }
-    function createDownloadUrl(name) {
-        return `https://gs-85-14-206-57.server.4netplayers.com:20820/mods/${encodeURIComponent(name)}.zip`;
-    }
-    let allMods = [];
-    let filteredMods = [];
-    function renderMods(mods) {
-        const list = document.getElementById('modList');
-        list.innerHTML = '';
-        if (mods.length === 0) {
-            list.innerHTML = '<li class="text-center text-gray-400 py-4">Sonuç bulunamadı.</li>';
-            return;
+        function createDownloadUrl(name) {
+            return `https://gs-85-14-206-57.server.4netplayers.com:20820/mods/${encodeURIComponent(name)}.zip`;
         }
-        for (let i = 0; i < mods.length; i++) {
-            const mod = mods[i];
-            const li = document.createElement('li');
-            li.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-4 px-2';
-            li.innerHTML = `
+        let allMods = [];
+        let filteredMods = [];
+        function renderMods(mods) {
+            const list = document.getElementById('modList');
+            list.innerHTML = '';
+            if (mods.length === 0) {
+                list.innerHTML = '<li class="text-center text-gray-400 py-4">Sonuç bulunamadı.</li>';
+                return;
+            }
+            for (let i = 0; i < mods.length; i++) {
+                const mod = mods[i];
+                const li = document.createElement('li');
+                li.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-4 px-2';
+                li.innerHTML = `
       <div class="flex-1 min-w-0">
         <div class="font-semibold text-gray-100 truncate">${mod.text}</div>
         <div class="text-xs text-gray-400 truncate">${mod.name}</div>
@@ -132,29 +152,29 @@
       </div>
       <a class="inline-block px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-medium transition" href="${createDownloadUrl(mod.name)}" target="_blank">İndir</a>
     `;
-            list.appendChild(li);
+                list.appendChild(li);
+            }
         }
-    }
-    const searchInput = document.getElementById('search');
-    function doFilterSort() {
-        const q = searchInput.value.toLowerCase();
-        filteredMods = allMods.filter(mod => {
-            const matchesText = (mod.name || mod.id || '').toLowerCase().includes(q) || (mod.text || '').toLowerCase().includes(q);
-            return matchesText;
-        });
-        renderMods(filteredMods);
-    }
-    function updateModInfo() {
-        const infoDiv = document.getElementById('modInfo');
-        const date = new Date();
-        infoDiv.textContent = `Toplam mod: ${filteredMods.length} | Son güncelleme: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-    }
-    document.getElementById('search').addEventListener('input', debounce(() => {
-        doFilterSort();
-        updateModInfo();
-    }, 200));
-    document.getElementById('loading').style.display = 'block';
-    fetchModsAndServer();
+        const searchInput = document.getElementById('search');
+        function doFilterSort() {
+            const q = searchInput.value.toLowerCase();
+            filteredMods = allMods.filter(mod => {
+                const matchesText = (mod.name || mod.id || '').toLowerCase().includes(q) || (mod.text || '').toLowerCase().includes(q);
+                return matchesText;
+            });
+            renderMods(filteredMods);
+        }
+        function updateModInfo() {
+            const infoDiv = document.getElementById('modInfo');
+            const date = new Date();
+            infoDiv.textContent = `Toplam mod: ${filteredMods.length} | Son güncelleme: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+        }
+        document.getElementById('search').addEventListener('input', debounce(() => {
+            doFilterSort();
+            updateModInfo();
+        }, 200));
+        document.getElementById('loading').style.display = 'block';
+        fetchModsAndServer();
     </script>
 </body>
 

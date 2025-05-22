@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hakkında | Dostlar Konağı FS25</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background: inherit;
+            filter: blur(8px) brightness(0.7);
+            pointer-events: none;
+        }
+
+        main,
+        nav,
+        footer {
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-950 text-gray-100 font-sans min-h-screen relative"
+    style="background-image: url('./assets/fs-25-background.png'); background-size: cover; background-position: center; background-attachment: fixed;">
+    <nav class="flex flex-wrap justify-center gap-3 py-6 mb-8 bg-gray-900/80 rounded-b-xl shadow">
+        <a href="home.html" class="px-4 py-2 rounded font-medium text-gray-200 hover:bg-gray-800">Anasayfa</a>
+        <a href="mods.html" class="px-4 py-2 rounded font-medium text-gray-200 hover:bg-gray-800">Sunucu & Modlar</a>
+        <a href="gallery.html" class="px-4 py-2 rounded font-medium text-gray-200 hover:bg-gray-800">Galeri</a>
+        <a href="rules.html" class="px-4 py-2 rounded font-medium text-gray-200 hover:bg-gray-800">Kurallar</a>
+        <a href="contact.html" class="px-4 py-2 rounded font-medium text-blue-400 bg-gray-800">Hakkında</a>
+    </nav>
+    <main class="max-w-xl mx-auto px-4">
+        <h2 class="text-xl font-bold text-blue-400 mb-6 text-center">Hakkında</h2>
+        <div class="bg-gray-900 rounded-xl shadow p-6 mb-8">
+            <div class="mb-2"><b>Geliştirici:</b> poncikpanda</div>
+            <div class="mb-2"><b>Mail:</b> <span class="text-gray-200">tkmnumut@gmail.com</span></div>
+            <div class="mb-2"><b>Discord:</b> <a href="https://discord.gg/yQ7XNK6RyN" target="_blank"
+                    class="text-blue-400 underline">discord.gg/yQ7XNK6RyN</a></div>
+        </div>
+        <div class="bg-gray-900 rounded-xl shadow p-6 mb-8">
+            <h3 class="text-lg font-semibold text-blue-300 mb-2">Dostlar Discord Botu</h3>
+            <p class="text-gray-200 mb-2">Dostlar Discord Botu, Dostlar Konağı FS25 topluluğu için özel olarak geliştirilmiş bir Discord botudur. Temel işlevleri:</p>
+            <ul class="list-disc list-inside text-gray-300 mb-2">
+                <li>Sunucu ve mod yönetimi</li>
+                <li>Otomatik galeri güncelleme ve resim ekleme</li>
+                <li>Topluluk etkileşimi ve moderasyon kolaylığı</li>
+                <li>FS25 oyun sunucusu ile entegrasyon</li>
+            </ul>
+            <p class="text-gray-400 text-sm">Bot, Discord üzerinden yapılan işlemleri otomatik olarak web sitesine yansıtarak topluluğun güncel ve dinamik kalmasını sağlar.</p>
+        </div>
+        <div class="bg-gray-900 rounded-xl shadow p-6 mb-8">
+            <h3 class="text-lg font-semibold text-blue-300 mb-2">Web Sitesinin Amacı</h3>
+            <p class="text-gray-200">Bu site, Dostlar Konağı FS25 topluluğu için merkezi bir bilgi, paylaşım ve etkileşim platformu sunar. Sunucu durumu, modlar, galeri ve kurallar gibi tüm güncel bilgiler burada kolayca erişilebilir. Topluluğun bir arada, şeffaf ve aktif kalmasını sağlamak ana hedeftir.</p>
+        </div>
+    </main>
+    <footer class="text-center text-xs text-gray-500 py-6 mt-8">
+        Farming Simulator 2025 © | Dostlar Konağı mod koleksiyonu<br>
+        İletişim: <b>poncikpanda</b> (Discord)
+    </footer>
+</body>
+
+</html>

@@ -1,32 +1,199 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kurallar | Dostlar Konağı FS25</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background: inherit;
+            filter: blur(6px) brightness(0.5);
+            pointer-events: none;
+        }
+
+        main,
+        nav,
+        footer {
+            position: relative;
+            z-index: 1;
+        }
+    </style>
 </head>
-<body class="bg-gray-950 text-gray-100 font-sans min-h-screen">
+
+<body class="bg-gray-950 text-gray-100 font-sans min-h-screen relative"
+    style="background-image: url('./assets/fs-25-background.png'); background-size: cover; background-position: center; background-attachment: fixed;">
     <nav class="flex flex-wrap justify-center gap-3 py-6 mb-8 bg-gray-900/80 rounded-b-xl shadow">
-        <a href="home.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Anasayfa</a>
-        <a href="mods.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Sunucu & Modlar</a>
-        <a href="gallery.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Galeri</a>
-        <a href="rules.html" class="px-4 py-2 rounded-lg font-medium text-blue-400 bg-gray-800">Kurallar</a>
-        <a href="contact.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">İletişim</a>
+        <a href="home.html" class="px-4 py-2 rounded font-medium text-gray-200 hover:bg-gray-800">Anasayfa</a>
+        <a href="mods.html" class="px-4 py-2 rounded font-medium text-gray-200 hover:bg-gray-800">Sunucu & Modlar</a>
+        <a href="gallery.html" class="px-4 py-2 rounded font-medium text-gray-200 hover:bg-gray-800">Galeri</a>
+        <a href="rules.html" class="px-4 py-2 rounded font-medium text-blue-400 bg-gray-800">Kurallar</a>
+        <a href="about.html" class="px-4 py-2 rounded font-medium text-gray-200 hover:bg-gray-800">Hakkında</a>
     </nav>
-    <main class="max-w-xl mx-auto px-4">
+    <main class="max-w-3xl mx-auto px-4">
         <h2 class="text-xl font-bold text-blue-400 mb-6 text-center">Kurallar</h2>
-        <ul class="list-disc list-inside space-y-2 bg-gray-900 rounded-xl shadow p-6 mb-8 text-gray-200">
-            <li>Sunucuya katılmadan önce Discord'daki kuralları okuyun.</li>
-            <li>Modları indirirken bağlantı sorunları yaşarsanız Discord'dan destek alın.</li>
-            <li>Modlar düzenli olarak güncellenir, eski sürümleri silmeniz önerilir.</li>
-            <li>Toplulukta saygılı ve yardımsever olun.</li>
-            <li>Hile, bug ve exploit kullanımı yasaktır.</li>
-        </ul>
+        <section class="mb-10">
+            <h3 class="text-lg font-semibold text-blue-300 mb-4">Topluluk Kuralları</h3>
+            <ul class="list-disc list-inside space-y-2 bg-gray-900 rounded-xl shadow p-6 mb-8 text-gray-200">
+                <li><b>Saygılı ve Nezaketli Olun:</b> Her üyenin düşüncesine ve varlığına saygı göstermek zorunludur.
+                    Hakaret, küfür, nefret söylemi ve kışkırtıcı davranışlar kesinlikle yasaktır. Herkesin kendini
+                    güvende ve rahat hissettiği bir ortam yaratmayı hedefliyoruz.</li>
+                <li><b>Spam ve Gereksiz Paylaşımlardan Kaçının:</b> Anlamsız mesajlar, tekrar eden içerikler ve gereksiz
+                    emojiler kullanarak kanalları doldurmak yasaktır. Ayrıca, başka sunucuların veya hizmetlerin
+                    reklamını yapmak yasaktır.</li>
+                <li><b>Uygunsuz İçerik Paylaşımına Karşı Sıfır Tolerans:</b> Şiddet, müstehcenlik, rahatsız edici
+                    görüntüler veya yazılar paylaşmak yasaktır. Bu kural hem metinler hem de görsel içerikler için
+                    geçerlidir. Tüm paylaşımlar topluluk kurallarına uygun olmalıdır.</li>
+                <li><b>Yapıcı ve Pozitif Tartışmalar:</b> Farklı görüşlerin paylaşılmasına izin verilir, ancak kavgaya
+                    dönüşen veya başkalarını hedef alan tartışmalara müsamaha gösterilmez. Görüşlerinizi ifade ederken
+                    saygıyı elden bırakmayın.</li>
+                <li><b>Yetkililerin Otoritesini Kabul Edin:</b> Moderatörler ve yöneticiler sunucunun düzenini
+                    korumaktan sorumludur. Onların talimatlarına uymak zorunludur. Yetkililere karşı saygısızlık ve
+                    itaatsizlik, uyarı ya da yaptırım ile sonuçlanabilir.</li>
+                <li><b>Kişisel Bilgilerin Güvenliği:</b> Kendinizin veya başkalarının kişisel bilgilerini (örneğin,
+                    telefon numaraları, adresler, kimlik bilgileri) paylaşmak kesinlikle yasaktır. Güvenlik, topluluğun
+                    birinci önceliğidir.</li>
+                <li><b>Belirli Dil ve Konu Kurallarına Uyun:</b> Sunucumuzda yalnızca belirlenen dil Türkçe - İngilizce
+                    kullanılmalıdır. Konu dışı paylaşımlar için ilgili kanalların kullanılması gereklidir. Konuların
+                    düzenini bozmamak, diğer üyelerin kolayca takip edebilmesini sağlar.</li>
+                <li><b>Etik Dışı Oyun Davranışları:</b> Herhangi bir etik dışı davranış kesinlikle yasaktır. Bu,
+                    topluluğun oyunlarda adil ve eğlenceli bir deneyim yaşamasını sağlar.</li>
+                <li><b>Discord ve Yasalara Uygun Davranışlar:</b> Discord'un resmi topluluk kuralları ve yerel yasalar,
+                    bu sunucuda da geçerlidir. Yasal olmayan veya Discord tarafından yasaklanan hiçbir içerik
+                    paylaşılmamalıdır.</li>
+                <li><b>Uygunsuz Kullanıcı Adları ve Profil Resimleri:</b> Küfür, cinsellik veya saldırganlık içeren
+                    kullanıcı adları ve avatarlar yasaktır. Her üye topluluğa uygun bir profil seçimi yapmalıdır.</li>
+                <li><b>Telif Haklarına Duyarlılık:</b> Telif hakkı ihlali oluşturan içeriklerin izinsiz paylaşımı
+                    yasaktır. Orijinal içeriklerin paylaşımına özen gösterin ve telif haklarına saygılı olun.</li>
+                <li><b>Botların Kullanımı:</b> Sunucuda bot kullanımı, yalnızca yetkililer tarafından izin verilen
+                    çerçevede yapılabilir. Spam veya sistemin işleyişini bozan bot kullanımı cezalandırılır.</li>
+                <li><b>Oyun Sunucusu Kuralları:</b> FS25 oyun sunucumuz kuralları mevcuttur. ⁠ᴋᴜʀᴀʟ-ᴋɪᴛᴀʙı</li>
+                <li><b>Özet:</b> Sunucuya giriş yapan her kullanıcı, burada belirtilen tüm kuralları okumuş, anlamış ve
+                    kabul etmiş sayılır. Bu kurallara uyulmaması durumunda uygulanacak yaptırımlardan kullanıcı
+                    sorumludur.</li>
+                <li><b>Dipnot:</b> Bu kurallar, yöneticilerin inisiyatifine ve durumun gerektirdiği koşullara bağlı
+                    olarak esnetilebilir veya değiştirilebilir. Yönetici ekibinin kararları nihai ve bağlayıcıdır.</li>
+            </ul>
+        </section>
+        <section>
+            <h3 class="text-lg font-semibold text-blue-300 mb-4">Farming Simulator 2025 Oyun Sunucusu Kuralları</h3>
+            <ul class="list-disc list-inside space-y-2 bg-gray-900 rounded-xl shadow p-6 mb-8 text-gray-200">
+                <li><b>Kazanç Sistemleri:</b>
+                    <ul class="list-disc list-inside ml-6">
+                        <li>Aylık kazanç sağlayan Güneş Santrali ve Yel Değirmenleri yasaktır.</li>
+                        <li>Genel FS 25 kazanç sistemleri:
+                            <ul class="list-disc list-inside ml-6">
+                                <li>Tarlalardan ürün elde etme.</li>
+                                <li>Hayvancılık faaliyetleri: Her hayvan kategorisinden 1 adet ile sınırlıdır, fazlası
+                                    cezai işleme tabi tutulur.</li>
+                                <li>Ormancılık ve kereste üretimi: Kestikleri ağaçların kökleri temizlenmeli, aksi halde
+                                    ağır cezai işlem uygulanır.</li>
+                                <li>Ürünlerin fabrikalarda işlenmesi ve satışı: Her fabrika kategorisinden 1 adet ile
+                                    sınırlıdır, fazlası cezai işleme tabi tutulur.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li><b>Arazi Alım ve Satımı:</b>
+                    <ul class="list-disc list-inside ml-6">
+                        <li>Tarla alıp satmak yasaktır.</li>
+                        <li>Eğer satın alınan arazi başka bir oyuncu tarafından talep edilirse, arazi satışı
+                            yapılabilir.</li>
+                    </ul>
+                </li>
+                <li><b>Peyzaj İşlemleri:</b>
+                    <ul class="list-disc list-inside ml-6">
+                        <li>Peyzaj konusunda yeterli tecrübesi olmayan oyuncular, peyzaj işlemleri için mutlaka
+                            yetkililerden yardım talep etmelidir.</li>
+                        <li>Hatalı veya haritanın düzenini etkileyecek şekilde yapılan peyzaj çalışmalarından kullanıcı
+                            sorumludur. Bu durumlarda:
+                            <ul class="list-disc list-inside ml-6">
+                                <li>Eğer sorun düzeltilebilir durumdaysa, gerekli düzeltmeler yapılır ve cezai işlem
+                                    uygulanır.</li>
+                                <li>Eğer düzeltilemeyecek bir durum oluşmuşsa, sunucu geri alınır ve bu süreçte tüm
+                                    kullanıcıların zararını karşılamak zorundadır.</li>
+                                <li>Her ne sebeple olursa olsun, gün sonunda peyzaj kaynaklı yapılan hatalara yaptırım
+                                    uygulanır, bu kararlar kesin ve nihai olarak değerlendirilir.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li><b>Uyku Saatleri:</b>
+                    <ul class="list-disc list-inside ml-6">
+                        <li>Gün sonlarında uyku başlatma saati 20:00'dir.</li>
+                        <li>Kış Aylarında: Uyanma saati 07:00 - 08:00 arası</li>
+                        <li>Yaz Aylarında: Uyanma saati 05:00 - 06:00 arası</li>
+                        <li>20:00’den sonra işi olan kullanıcılar, en geç 23:00'e kadar uyku atmalıdır.</li>
+                        <li>23.00'dan sonra tüm kullanıcılar uyku atmak ve kabul etmek zorundadır.</li>
+                    </ul>
+                </li>
+                <li><b>Depolama:</b>
+                    <ul class="list-disc list-inside ml-6">
+                        <li>Balya, palet ve benzeri ürünler için sunucuda depo alanları mevcuttur.</li>
+                        <li>Bu tür ürünler kesinlikle dışarıda bırakılmamalıdır, cezai işlem uygulanır.</li>
+                    </ul>
+                </li>
+                <li><b>Ekipman Kullanımı:</b>
+                    <ul class="list-disc list-inside ml-6">
+                        <li>Ekipmanlar yalnızca oyuncuların kendilerine ait yerlerde tutulmalıdır.</li>
+                        <li>Ekipmanlar oyunun genel düzeni etkileyecek şekilde veya yerlerde bulunursa cezai işlem
+                            uygulanır.</li>
+                    </ul>
+                </li>
+                <li><b>Modlar ve Hatalar:</b>
+                    <ul class="list-disc list-inside ml-6">
+                        <li>Modlarla ilgili ortaya çıkan hatalar, buglar veya gecikmeler yöneticilere bildirilmelidir.
+                        </li>
+                        <li>Mod önerileriniz varsa, bunları ilgili kanala gönderebilirsiniz.</li>
+                        <li>Oyunda kullanılan modlara ilgili kanal üzerinden erişebilirsiniz.</li>
+                    </ul>
+                </li>
+                <li><b>Aktiflik Durumu:</b>
+                    <ul class="list-disc list-inside ml-6">
+                        <li>Herhangi bir sebep belirtilmeden 3 gün art arda giriş yapılmazsa, cezai işlem uygulanır.
+                        </li>
+                        <li>Bu durum devam ederse gün sonunda çiftlik silinir.</li>
+                    </ul>
+                </li>
+                <li><b>Şikayetler:</b>
+                    <ul class="list-disc list-inside ml-6">
+                        <li>Oyunla ilgili herhangi bir sorun ya da şikayet durumunda, ilgili kanalı kullanarak konuyu
+                            yöneticilere bildirebilirsiniz.</li>
+                        <li>Şikayetlerin özellikle diğer kullanıcıların ekipmanları, işçileri veya oyun içi
+                            hareketlerinin sizin oyun düzeninizi etkilemesi, tarlalarınıza zarar vermesi, ya da iş
+                            akışınızı bozması gibi durumları içermesi halinde şu adımları takip edebilirsiniz:
+                            <ul class="list-disc list-inside ml-6">
+                                <li>Durumunuzu açıklayan kısa bir yazı yazın.</li>
+                                <li>Şikayetinizi desteklemek için olaya ait fotoğraf veya video kanıtlarını paylaşın.
+                                </li>
+                            </ul>
+                        </li>
+                        <li>Yönetim ekibi şikayetinizi inceleyecek ve durumu değerlendirecektir. Eğer şikayet haklı
+                            bulunursa, ilgili kullanıcıya cezai işlem uygulanacaktır.</li>
+                        <li>Cezai işlem sonucunda kesilen ücretler, şikayeti yapan kullanıcıya aktarılacaktır. Bu
+                            sistem, zarar gören kullanıcıların kayıplarını telafi etmek amacıyla uygulanmaktadır.</li>
+                        <li>Gereksiz veya yalan yere yapılan şikayetler, şikayet eden kullanıcıya da cezai işlem
+                            uygulanmasına yol açabilir.</li>
+                    </ul>
+                </li>
+                <li><b>Genel Sunucu Kuralları:</b> Genel sunucu kuralları ilgili kanalda mevcuttur.</li>
+                <li><b>Özet:</b> Sunucuya giriş yapan her kullanıcı, burada belirtilen tüm kuralları okumuş, anlamış ve
+                    kabul etmiş sayılır. Bu kurallara uyulmaması durumunda uygulanacak yaptırımlardan kullanıcı
+                    sorumludur.</li>
+                <li><b>Dipnot:</b> Bu kurallar, yöneticilerin inisiyatifine ve durumun gerektirdiği koşullara bağlı
+                    olarak esnetilebilir veya değiştirilebilir. Yönetici ekibinin kararları nihai ve bağlayıcıdır.</li>
+            </ul>
+        </section>
     </main>
     <footer class="text-center text-xs text-gray-500 py-6 mt-8">
         Farming Simulator 2025 © | Dostlar Konağı mod koleksiyonu<br>
         İletişim: <b>poncikpanda</b> (Discord)
     </footer>
 </body>
+
 </html>

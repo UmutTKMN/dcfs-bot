@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('mods')
+    .setName('mod')
     .setDescription('Tüm aktif modları indirmen için bağlantı gönderir.'),
   async execute(interaction) {
     const embed = new EmbedBuilder()

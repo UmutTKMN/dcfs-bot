@@ -1,54 +1,77 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Galeri | Dostlar Konağı FS25</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background: inherit;
+            filter: blur(8px) brightness(0.7);
+            pointer-events: none;
+        }
+
+        main,
+        nav,
+        footer {
+            position: relative;
+            z-index: 1;
+        }
+    </style>
 </head>
-<body class="bg-gray-950 text-gray-100 font-sans min-h-screen">
+
+<body class="bg-gray-950 text-gray-100 font-sans min-h-screen relative"
+    style="background-image: url('./assets/gallery1.jpg'); background-size: cover; background-position: center; background-attachment: fixed;">
     <nav class="flex flex-wrap justify-center gap-3 py-6 mb-8 bg-gray-900/80 rounded-b-xl shadow">
-        <a href="home.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Anasayfa</a>
-        <a href="mods.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Sunucu & Modlar</a>
-        <a href="gallery.html" class="px-4 py-2 rounded-lg font-medium text-blue-400 bg-gray-800">Galeri</a>
-        <a href="rules.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Kurallar</a>
-        <a href="contact.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">İletişim</a>
+        <a href="home.html" class="px-4 py-2 rounded font-medium text-gray-200 hover:bg-gray-800">Anasayfa</a>
+        <a href="mods.html" class="px-4 py-2 rounded font-medium text-gray-200 hover:bg-gray-800">Sunucu & Modlar</a>
+        <a href="gallery.html" class="px-4 py-2 rounded font-medium text-blue-400 bg-gray-800">Galeri</a>
+        <a href="rules.html" class="px-4 py-2 rounded font-medium text-gray-200 hover:bg-gray-800">Kurallar</a>
+        <a href="about.html" class="px-4 py-2 rounded font-medium text-gray-200 hover:bg-gray-800">Hakkında</a>
     </nav>
     <main class="max-w-3xl mx-auto px-4">
         <h2 class="text-xl font-bold text-blue-400 mb-6 text-center">Galeri</h2>
         <div id="galleryContent" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-4"></div>
-        <div class="text-center text-gray-400 text-sm mb-8">Topluluk üyelerimizin oyun içi anları burada!<br>Daha fazla fotoğraf için Discord'a katıl.</div>
+        <div class="text-center text-gray-400 text-sm mb-8">Topluluk üyelerimizin oyun içi anları burada!<br>Daha fazla
+            fotoğraf için Discord'a katıl.</div>
     </main>
     <footer class="text-center text-xs text-gray-500 py-6 mt-8">
         Farming Simulator 2025 © | Dostlar Konağı mod koleksiyonu<br>
         İletişim: <b>poncikpanda</b> (Discord)
     </footer>
     <script>
-    async function loadGallery() {
-        const container = document.getElementById('galleryContent');
-        container.innerHTML = '<div class="col-span-full text-center text-blue-400">Yükleniyor...</div>';
-        try {
-            const res = await fetch('/api/gallery');
-            const items = await res.json();
-            if (!Array.isArray(items) || items.length === 0) {
-                container.innerHTML = '<div class="col-span-full text-center text-gray-400">Henüz galeri fotoğrafı eklenmedi.</div>';
-                return;
-            }
-            container.innerHTML = '';
-            for (const item of items) {
-                const div = document.createElement('div');
-                div.className = 'rounded-xl overflow-hidden shadow bg-gray-900 hover:scale-105 transition-transform flex flex-col';
-                div.innerHTML = `
+        async function loadGallery() {
+            const container = document.getElementById('galleryContent');
+            container.innerHTML = '<div class="col-span-full text-center text-blue-400">Yükleniyor...</div>';
+            try {
+                const res = await fetch('/api/gallery');
+                const items = await res.json();
+                if (!Array.isArray(items) || items.length === 0) {
+                    container.innerHTML = '<div class="col-span-full text-center text-gray-400">Henüz galeri fotoğrafı eklenmedi.</div>';
+                    return;
+                }
+                container.innerHTML = '';
+                for (const item of items) {
+                    const div = document.createElement('div');
+                    div.className = 'rounded-xl overflow-hidden shadow bg-gray-900 hover:scale-105 transition-transform flex flex-col';
+                    div.innerHTML = `
                     <img src="${item.src}" alt="Galeri" class="w-full h-40 object-cover">
                     <div class="p-3 text-center text-gray-200 text-sm">${item.caption || ''}</div>
                 `;
-                container.appendChild(div);
+                    container.appendChild(div);
+                }
+            } catch {
+                container.innerHTML = '<div class="col-span-full text-center text-red-400">Galeri yüklenemedi.</div>';
             }
-        } catch {
-            container.innerHTML = '<div class="col-span-full text-center text-red-400">Galeri yüklenemedi.</div>';
         }
-    }
-    loadGallery();
+        loadGallery();
     </script>
 </body>
+
 </html>
