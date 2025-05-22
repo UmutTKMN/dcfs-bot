@@ -62,27 +62,24 @@
         let allAuthors = [];
         function renderMods(mods, scrollTop = 0) {
             const list = document.getElementById('modList');
-            const viewport = document.querySelector('.virtual-list-viewport');
-            const start = Math.floor(scrollTop / ITEM_HEIGHT);
-            const end = Math.min(start + VISIBLE_COUNT, mods.length);
+            const start = 0;
+            const end = mods.length;
             list.innerHTML = '';
             if (mods.length === 0) {
-                list.innerHTML = '<li style="text-align:center;color:#aaa;padding:15px">Sonuç bulunamadı.</li>';
+                list.innerHTML = '<li class="text-center text-gray-400 py-4">Sonuç bulunamadı.</li>';
                 return;
             }
-            list.style.paddingTop = (start * ITEM_HEIGHT) + 'px';
-            list.style.paddingBottom = ((mods.length - end) * ITEM_HEIGHT) + 'px';
             for (let i = start; i < end; i++) {
                 const mod = mods[i];
                 const li = document.createElement('li');
-                li.className = 'mod-item';
+                li.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-4 px-2';
                 li.innerHTML = `
-          <div class="mod-info">
-            <div class="mod-name">${mod.text}</div>
-            <div class="mod-id">${mod.name}</div>
-            <div class="mod-desc">${mod.author}</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-semibold text-gray-100 truncate">${mod.text}</div>
+            <div class="text-xs text-gray-400 truncate">${mod.name}</div>
+            <div class="text-xs text-gray-400 truncate">${mod.author || ''}</div>
           </div>
-          <a class="download-btn" href="${createDownloadUrl(mod.name)}" target="_blank">İndir</a>
+          <a class="inline-block px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-medium transition" href="${createDownloadUrl(mod.name)}" target="_blank">İndir</a>
         `;
                 list.appendChild(li);
             }
@@ -94,7 +91,6 @@
             select.innerHTML = '<option value="">Tüm Yazarlar</option>' + authors.map(a => `<option value="${a}">${a}</option>`).join('');
         }
         const searchInput = document.getElementById('search');
-        const viewport = document.querySelector('.virtual-list-viewport');
         function doFilterSort() {
             const q = searchInput.value.toLowerCase();
             const author = document.getElementById('authorFilter').value;
@@ -108,7 +104,7 @@
             else if (sort === 'name-desc') filteredMods.sort((a,b)=>b.text.localeCompare(a.text));
             else if (sort === 'author-asc') filteredMods.sort((a,b)=>(a.author||'').localeCompare(b.author||''));
             else if (sort === 'author-desc') filteredMods.sort((a,b)=>(b.author||'').localeCompare(a.author||''));
-            renderMods(filteredMods, viewport.scrollTop);
+            renderMods(filteredMods);
         }
         function updateModInfo() {
             const infoDiv = document.getElementById('modInfo');
@@ -126,9 +122,6 @@
         document.getElementById('sortSelect').addEventListener('change', () => {
             doFilterSort();
             updateModInfo();
-        });
-        viewport.addEventListener('scroll', () => {
-            renderMods(filteredMods, viewport.scrollTop);
         });
         document.getElementById('loading').style.display = 'block';
         fetchMods().then(mods => {
