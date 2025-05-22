@@ -32,8 +32,7 @@ function startApiServer() {
       if (err) return res.status(500).json({ error: "Veri okunamadı." });
       try {
         const json = JSON.parse(data);
-        const gallery = Object.values(json.gallery || {});
-        res.json(gallery);
+        res.json(json); // Doğrudan array döndür
       } catch (e) {
         res.status(500).json({ error: "JSON parse hatası." });
       }
