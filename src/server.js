@@ -28,7 +28,7 @@ const {
   getModString,
   fixColorCodes,
 } = require("./utils/utils");
-const { startModsApiServer } = require("./mods-api");
+const { startApiServer } = require("./api");
 
 // Environment variables - Standardized names
 const CONFIG = {
@@ -1033,7 +1033,7 @@ client.on("ready", async () => {
   startHeartbeat();
   await registerSlashCommands();
   // Discord botu başlatılırken web API sunucusunu da başlat
-  startModsApiServer();
+  startApiServer();
 });
 
 // Slash komutlarını dinle

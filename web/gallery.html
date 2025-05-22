@@ -9,37 +9,46 @@
 <body class="bg-gray-950 text-gray-100 font-sans min-h-screen">
     <nav class="flex flex-wrap justify-center gap-3 py-6 mb-8 bg-gray-900/80 rounded-b-xl shadow">
         <a href="home.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Anasayfa</a>
-        <a href="server.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Sunucu Hakkında</a>
+        <a href="mods.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Sunucu & Modlar</a>
         <a href="gallery.html" class="px-4 py-2 rounded-lg font-medium text-blue-400 bg-gray-800">Galeri</a>
-        <a href="mods.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Modlar</a>
         <a href="rules.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Kurallar</a>
         <a href="contact.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">İletişim</a>
     </nav>
     <main class="max-w-3xl mx-auto px-4">
         <h2 class="text-xl font-bold text-blue-400 mb-6 text-center">Galeri</h2>
-        <div id="galleryContent" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-4">
-            <div class="rounded-xl overflow-hidden shadow bg-gray-900 hover:scale-105 transition-transform">
-                <img src="./assets/gallery1.jpg" alt="Oyun içi 1" class="w-full h-40 object-cover">
-                <div class="p-3 text-center text-gray-200 text-sm">Bergblick haritasında hasat zamanı</div>
-            </div>
-            <div class="rounded-xl overflow-hidden shadow bg-gray-900 hover:scale-105 transition-transform">
-                <img src="./assets/gallery2.jpg" alt="Oyun içi 2" class="w-full h-40 object-cover">
-                <div class="p-3 text-center text-gray-200 text-sm">Topluluk etkinliği</div>
-            </div>
-            <div class="rounded-xl overflow-hidden shadow bg-gray-900 hover:scale-105 transition-transform">
-                <img src="./assets/gallery3.jpg" alt="Oyun içi 3" class="w-full h-40 object-cover">
-                <div class="p-3 text-center text-gray-200 text-sm">Ortak çalışma</div>
-            </div>
-            <div class="rounded-xl overflow-hidden shadow bg-gray-900 hover:scale-105 transition-transform">
-                <img src="./assets/gallery4.jpg" alt="Oyun içi 4" class="w-full h-40 object-cover">
-                <div class="p-3 text-center text-gray-200 text-sm">Akşam manzarası</div>
-            </div>
-        </div>
+        <div id="galleryContent" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-4"></div>
         <div class="text-center text-gray-400 text-sm mb-8">Topluluk üyelerimizin oyun içi anları burada!<br>Daha fazla fotoğraf için Discord'a katıl.</div>
     </main>
     <footer class="text-center text-xs text-gray-500 py-6 mt-8">
         Farming Simulator 2025 © | Dostlar Konağı mod koleksiyonu<br>
         İletişim: <b>poncikpanda</b> (Discord)
     </footer>
+    <script>
+    async function loadGallery() {
+        const container = document.getElementById('galleryContent');
+        container.innerHTML = '<div class="col-span-full text-center text-blue-400">Yükleniyor...</div>';
+        try {
+            const res = await fetch('/api/gallery');
+            const items = await res.json();
+            if (!Array.isArray(items) || items.length === 0) {
+                container.innerHTML = '<div class="col-span-full text-center text-gray-400">Henüz galeri fotoğrafı eklenmedi.</div>';
+                return;
+            }
+            container.innerHTML = '';
+            for (const item of items) {
+                const div = document.createElement('div');
+                div.className = 'rounded-xl overflow-hidden shadow bg-gray-900 hover:scale-105 transition-transform flex flex-col';
+                div.innerHTML = `
+                    <img src="${item.src}" alt="Galeri" class="w-full h-40 object-cover">
+                    <div class="p-3 text-center text-gray-200 text-sm">${item.caption || ''}</div>
+                `;
+                container.appendChild(div);
+            }
+        } catch {
+            container.innerHTML = '<div class="col-span-full text-center text-red-400">Galeri yüklenemedi.</div>';
+        }
+    }
+    loadGallery();
+    </script>
 </body>
 </html>

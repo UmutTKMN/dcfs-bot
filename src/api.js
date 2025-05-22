@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const cors = require("cors");
 
-function startModsApiServer() {
+function startApiServer() {
   const app = express();
   const PORT = 5143;
 
@@ -26,9 +26,23 @@ function startModsApiServer() {
     });
   });
 
+  app.get("/api/gallery", (req, res) => {
+    const filePath = path.join(__dirname, "../data/fs25_gallery.json");
+    fs.readFile(filePath, "utf8", (err, data) => {
+      if (err) return res.status(500).json({ error: "Veri okunamadı." });
+      try {
+        const json = JSON.parse(data);
+        const gallery = Object.values(json.gallery || {});
+        res.json(gallery);
+      } catch (e) {
+        res.status(500).json({ error: "JSON parse hatası." });
+      }
+    });
+  });
+
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`API sunucusu http://0.0.0.0:${PORT} adresinde çalışıyor.`);
   });
 }
 
-module.exports = { startModsApiServer };
+module.exports = { startApiServer };

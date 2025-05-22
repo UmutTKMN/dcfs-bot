@@ -55,27 +55,47 @@
         İletişim: <b>poncikpanda</b> (Discord)
     </footer>
     <script>
-    // Sunucu Bilgisi
-    async function fetchServerInfo() {
+    // Sunucu Bilgisi ve Modlar
+    async function fetchModsAndServer() {
+        document.getElementById('loading').style.display = 'block';
         try {
             const res = await fetch('/api/mods');
-            const data = await res.json();
-            const server = data.server || data;
-            document.getElementById('serverInfoLoading').style.display = 'none';
-            const content = document.getElementById('serverInfoContent');
-            content.style.display = '';
-            document.getElementById('serverName').textContent = server.name;
-            document.getElementById('serverGame').textContent = server.game;
-            document.getElementById('serverVersion').textContent = server.version;
-            document.getElementById('serverMap').textContent = server.mapName;
-            const statusEl = document.getElementById('serverStatus');
-            statusEl.textContent = server.online ? 'Çevrimiçi' : 'Kapalı';
-            statusEl.className = server.online ? 'text-green-400 font-bold' : 'text-red-400 font-bold';
+            const modsRaw = await res.json();
+            // Sunucu bilgisi ilk modun başında veya ayrı bir modül olarak geliyorsa
+            // Burada örnek olarak ilk modun başında server bilgisi var varsayalım:
+            // { server: {...}, mods: [...] }
+            // Ama senin sisteminde sadece modlar array'i geliyor, sunucu bilgisi yoksa, ilk modun başında server bilgisi yoksa, sunucu bilgisi gösterilmez.
+            // Eğer modlar array'inin başında server bilgisi varsa:
+            let server = null;
+            let mods = modsRaw;
+            if (modsRaw.length && modsRaw[0] && modsRaw[0]._isServerInfo) {
+                server = modsRaw[0];
+                mods = modsRaw.slice(1);
+            }
+            // Eğer modlar array'inde server bilgisi yoksa, sunucu kutusunu gizle
+            if (server) {
+                document.getElementById('serverInfoLoading').style.display = 'none';
+                const content = document.getElementById('serverInfoContent');
+                content.style.display = '';
+                document.getElementById('serverName').textContent = server.name;
+                document.getElementById('serverGame').textContent = server.game;
+                document.getElementById('serverVersion').textContent = server.version;
+                document.getElementById('serverMap').textContent = server.mapName;
+                const statusEl = document.getElementById('serverStatus');
+                statusEl.textContent = server.online ? 'Çevrimiçi' : 'Kapalı';
+                statusEl.className = server.online ? 'text-green-400 font-bold' : 'text-red-400 font-bold';
+            } else {
+                document.getElementById('serverInfoBox').style.display = 'none';
+            }
+            allMods = mods;
+            filteredMods = mods;
+            document.getElementById('loading').style.display = 'none';
+            renderMods(mods);
+            updateModInfo();
         } catch {
-            document.getElementById('serverInfoLoading').textContent = 'Sunucu bilgisi alınamadı.';
+            document.getElementById('loading').textContent = 'Modlar veya sunucu bilgisi yüklenemedi.';
         }
     }
-    fetchServerInfo();
     // Modlar
     function debounce(fn, delay) {
         let timer;
@@ -134,15 +154,7 @@
         updateModInfo();
     }, 200));
     document.getElementById('loading').style.display = 'block';
-    fetchMods().then(mods => {
-        allMods = mods;
-        filteredMods = mods;
-        document.getElementById('loading').style.display = 'none';
-        renderMods(mods);
-        updateModInfo();
-    }).catch(() => {
-        document.getElementById('loading').textContent = 'Modlar yüklenemedi.';
-    });
+    fetchModsAndServer();
     </script>
 </body>
 
