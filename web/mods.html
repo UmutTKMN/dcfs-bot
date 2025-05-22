@@ -4,134 +4,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modlar | Dostlar Konağı FS25</title>
+    <title>Sunucu & Modlar | Dostlar Konağı FS25</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
 
 <body class="bg-gray-950 text-gray-100 font-sans min-h-screen">
     <nav class="flex flex-wrap justify-center gap-3 py-6 mb-8 bg-gray-900/80 rounded-b-xl shadow">
         <a href="home.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Anasayfa</a>
-        <a href="server.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Sunucu
-            Hakkında</a>
+        <a href="mods.html" class="px-4 py-2 rounded-lg font-medium text-blue-400 bg-gray-800">Sunucu & Modlar</a>
         <a href="gallery.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Galeri</a>
-        <a href="mods.html" class="px-4 py-2 rounded-lg font-medium text-blue-400 bg-gray-800">Modlar</a>
         <a href="rules.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">Kurallar</a>
         <a href="contact.html" class="px-4 py-2 rounded-lg font-medium text-gray-200 hover:bg-gray-800">İletişim</a>
     </nav>
     <main class="max-w-3xl mx-auto px-4">
-        <h2 class="text-xl font-bold text-blue-400 mb-6 text-center">Modlar</h2>
-        <div class="flex flex-wrap gap-3 mb-6 items-center justify-center">
-            <input type="text" id="search" placeholder="Mod ara..."
-                class="px-3 py-2 rounded bg-gray-800 text-gray-100 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[140px] max-w-[220px]">
-            <a href="https://gs-85-14-206-57.server.4netplayers.com:20820/all_mods_download?onlyActive=true"
-                target="_blank"
-                class="inline-block px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow hover:bg-blue-600 transition">Tüm
-                Modları İndir</a>
-        </div>
-        <div class="overflow-x-auto rounded-xl shadow mb-4">
-            <ul class="divide-y divide-gray-800" id="modList"></ul>
-        </div>
-        <div id="loading" class="text-center text-blue-400 font-semibold my-4">Yükleniyor...</div>
-        <div id="modInfo" class="text-center text-gray-400 text-sm mb-8"></div>
+        <!-- Sunucu Hakkında Bölümü -->
+        <section class="mb-10">
+            <h2 class="text-xl font-bold text-blue-400 mb-6 text-center">Sunucu Hakkında</h2>
+            <div id="serverInfoBox" class="bg-gray-900 rounded-xl shadow p-6 flex flex-col items-center">
+                <div id="serverInfoLoading" class="text-gray-400">Yükleniyor...</div>
+                <div id="serverInfoContent" style="display:none;">
+                    <div class="text-lg font-semibold text-blue-300 mb-2" id="serverName"></div>
+                    <div class="mb-1"><b>Oyun:</b> <span id="serverGame"></span></div>
+                    <div class="mb-1"><b>Sürüm:</b> <span id="serverVersion"></span></div>
+                    <div class="mb-1"><b>Harita:</b> <span id="serverMap"></span></div>
+                    <div class="mb-2"><b>Durum:</b> <span id="serverStatus"></span></div>
+                    <div class="text-gray-300 text-sm">Dostlar Konağı FS25 sunucusu, topluluk için optimize edilmiş, güncel ve güvenli bir oyun ortamı sunar.</div>
+                </div>
+            </div>
+        </section>
+        <!-- Modlar Bölümü -->
+        <section>
+            <h2 class="text-xl font-bold text-blue-400 mb-6 text-center">Modlar</h2>
+            <div class="flex flex-wrap gap-3 mb-6 items-center justify-center">
+                <input type="text" id="search" placeholder="Mod ara..."
+                    class="px-3 py-2 rounded bg-gray-800 text-gray-100 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[140px] max-w-[220px]">
+                <a href="https://gs-85-14-206-57.server.4netplayers.com:20820/all_mods_download?onlyActive=true"
+                    target="_blank"
+                    class="inline-block px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow hover:bg-blue-600 transition">Tüm
+                    Modları İndir</a>
+            </div>
+            <div class="overflow-x-auto rounded-xl shadow mb-4">
+                <ul class="divide-y divide-gray-800" id="modList"></ul>
+            </div>
+            <div id="loading" class="text-center text-blue-400 font-semibold my-4">Yükleniyor...</div>
+            <div id="modInfo" class="text-center text-gray-400 text-sm mb-8"></div>
+        </section>
     </main>
     <footer class="text-center text-xs text-gray-500 py-6 mt-8">
         Farming Simulator 2025 © | Dostlar Konağı mod koleksiyonu<br>
         İletişim: <b>poncikpanda</b> (Discord)
     </footer>
     <script>
-        function debounce(fn, delay) {
-            let timer;
-            return function (...args) {
-                clearTimeout(timer);
-                timer = setTimeout(() => fn.apply(this, args), delay);
-            };
-        }
-        async function fetchMods() {
+    // Sunucu Bilgisi
+    async function fetchServerInfo() {
+        try {
             const res = await fetch('/api/mods');
-            return res.json();
+            const data = await res.json();
+            const server = data.server || data;
+            document.getElementById('serverInfoLoading').style.display = 'none';
+            const content = document.getElementById('serverInfoContent');
+            content.style.display = '';
+            document.getElementById('serverName').textContent = server.name;
+            document.getElementById('serverGame').textContent = server.game;
+            document.getElementById('serverVersion').textContent = server.version;
+            document.getElementById('serverMap').textContent = server.mapName;
+            const statusEl = document.getElementById('serverStatus');
+            statusEl.textContent = server.online ? 'Çevrimiçi' : 'Kapalı';
+            statusEl.className = server.online ? 'text-green-400 font-bold' : 'text-red-400 font-bold';
+        } catch {
+            document.getElementById('serverInfoLoading').textContent = 'Sunucu bilgisi alınamadı.';
         }
-        function createDownloadUrl(name) {
-            return `https://gs-85-14-206-57.server.4netplayers.com:20820/mods/${encodeURIComponent(name)}.zip`;
+    }
+    fetchServerInfo();
+    // Modlar
+    function debounce(fn, delay) {
+        let timer;
+        return function (...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), delay);
+        };
+    }
+    async function fetchMods() {
+        const res = await fetch('/api/mods');
+        return res.json();
+    }
+    function createDownloadUrl(name) {
+        return `https://gs-85-14-206-57.server.4netplayers.com:20820/mods/${encodeURIComponent(name)}.zip`;
+    }
+    let allMods = [];
+    let filteredMods = [];
+    function renderMods(mods) {
+        const list = document.getElementById('modList');
+        list.innerHTML = '';
+        if (mods.length === 0) {
+            list.innerHTML = '<li class="text-center text-gray-400 py-4">Sonuç bulunamadı.</li>';
+            return;
         }
-        const ITEM_HEIGHT = 64;
-        const VISIBLE_COUNT = 12;
-        let allMods = [];
-        let filteredMods = [];
-        let allAuthors = [];
-        function renderMods(mods, scrollTop = 0) {
-            const list = document.getElementById('modList');
-            const start = 0;
-            const end = mods.length;
-            list.innerHTML = '';
-            if (mods.length === 0) {
-                list.innerHTML = '<li class="text-center text-gray-400 py-4">Sonuç bulunamadı.</li>';
-                return;
-            }
-            for (let i = start; i < end; i++) {
-                const mod = mods[i];
-                const li = document.createElement('li');
-                li.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-4 px-2';
-                li.innerHTML = `
-          <div class="flex-1 min-w-0">
-            <div class="font-semibold text-gray-100 truncate">${mod.text}</div>
-            <div class="text-xs text-gray-400 truncate">${mod.name}</div>
-            <div class="text-xs text-gray-400 truncate">${mod.author || ''}</div>
-          </div>
-          <a class="inline-block px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-medium transition" href="${createDownloadUrl(mod.name)}" target="_blank">İndir</a>
-        `;
-                list.appendChild(li);
-            }
+        for (let i = 0; i < mods.length; i++) {
+            const mod = mods[i];
+            const li = document.createElement('li');
+            li.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-4 px-2';
+            li.innerHTML = `
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold text-gray-100 truncate">${mod.text}</div>
+        <div class="text-xs text-gray-400 truncate">${mod.name}</div>
+        <div class="text-xs text-gray-400 truncate">${mod.author || ''}</div>
+      </div>
+      <a class="inline-block px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-medium transition" href="${createDownloadUrl(mod.name)}" target="_blank">İndir</a>
+    `;
+            list.appendChild(li);
         }
-        function updateAuthorFilter() {
-            const select = document.getElementById('authorFilter');
-            const authors = Array.from(new Set(allMods.map(m => m.author).filter(Boolean))).sort((a, b) => a.localeCompare(b));
-            allAuthors = authors;
-            select.innerHTML = '<option value="">Tüm Yazarlar</option>' + authors.map(a => `<option value="${a}">${a}</option>`).join('');
-        }
-        const searchInput = document.getElementById('search');
-        function doFilterSort() {
-            const q = searchInput.value.toLowerCase();
-            const author = document.getElementById('authorFilter').value;
-            const sort = document.getElementById('sortSelect').value;
-            filteredMods = allMods.filter(mod => {
-                const matchesText = (mod.name || mod.id || '').toLowerCase().includes(q) || (mod.text || '').toLowerCase().includes(q);
-                const matchesAuthor = !author || mod.author === author;
-                return matchesText && matchesAuthor;
-            });
-            if (sort === 'name-asc') filteredMods.sort((a, b) => a.text.localeCompare(b.text));
-            else if (sort === 'name-desc') filteredMods.sort((a, b) => b.text.localeCompare(a.text));
-            else if (sort === 'author-asc') filteredMods.sort((a, b) => (a.author || '').localeCompare(b.author || ''));
-            else if (sort === 'author-desc') filteredMods.sort((a, b) => (b.author || '').localeCompare(a.author || ''));
-            renderMods(filteredMods);
-        }
-        function updateModInfo() {
-            const infoDiv = document.getElementById('modInfo');
-            const date = new Date();
-            infoDiv.textContent = `Toplam mod: ${filteredMods.length} | Son güncelleme: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-        }
-        document.getElementById('search').addEventListener('input', debounce(() => {
-            doFilterSort();
-            updateModInfo();
-        }, 200));
-        document.getElementById('authorFilter').addEventListener('change', () => {
-            doFilterSort();
-            updateModInfo();
+    }
+    const searchInput = document.getElementById('search');
+    function doFilterSort() {
+        const q = searchInput.value.toLowerCase();
+        filteredMods = allMods.filter(mod => {
+            const matchesText = (mod.name || mod.id || '').toLowerCase().includes(q) || (mod.text || '').toLowerCase().includes(q);
+            return matchesText;
         });
-        document.getElementById('sortSelect').addEventListener('change', () => {
-            doFilterSort();
-            updateModInfo();
-        });
-        document.getElementById('loading').style.display = 'block';
-        fetchMods().then(mods => {
-            allMods = mods;
-            filteredMods = mods;
-            updateAuthorFilter();
-            document.getElementById('loading').style.display = 'none';
-            renderMods(mods);
-            updateModInfo();
-        }).catch(() => {
-            document.getElementById('loading').textContent = 'Modlar yüklenemedi.';
-        });
+        renderMods(filteredMods);
+    }
+    function updateModInfo() {
+        const infoDiv = document.getElementById('modInfo');
+        const date = new Date();
+        infoDiv.textContent = `Toplam mod: ${filteredMods.length} | Son güncelleme: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+    }
+    document.getElementById('search').addEventListener('input', debounce(() => {
+        doFilterSort();
+        updateModInfo();
+    }, 200));
+    document.getElementById('loading').style.display = 'block';
+    fetchMods().then(mods => {
+        allMods = mods;
+        filteredMods = mods;
+        document.getElementById('loading').style.display = 'none';
+        renderMods(mods);
+        updateModInfo();
+    }).catch(() => {
+        document.getElementById('loading').textContent = 'Modlar yüklenemedi.';
+    });
     </script>
 </body>
 

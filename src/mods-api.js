@@ -26,19 +26,6 @@ function startModsApiServer() {
     });
   });
 
-  app.get("/api/server", (req, res) => {
-    const filePath = path.join(__dirname, "../data/fs25_bot.json");
-    fs.readFile(filePath, "utf8", (err, data) => {
-      if (err) return res.status(500).json({ error: "Veri okunamadı." });
-      try {
-        const json = JSON.parse(data);
-        res.json(json);
-      } catch (e) {
-        res.status(500).json({ error: "JSON parse hatası." });
-      }
-    });
-  });
-
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`API sunucusu http://0.0.0.0:${PORT} adresinde çalışıyor.`);
   });
