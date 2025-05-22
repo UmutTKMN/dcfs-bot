@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modlar | Dostlar Konağı FS25</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <nav class="main-nav">
+      <a href="home.html" class="nav-link">Anasayfa</a>
+      <a href="server.html" class="nav-link">Sunucu Hakkında</a>
+      <a href="gallery.html" class="nav-link">Galeri</a>
+      <a href="mods.html" class="nav-link active">Modlar</a>
+      <a href="rules.html" class="nav-link">Kurallar</a>
+      <a href="contact.html" class="nav-link">İletişim</a>
+    </nav>
+    <div class="container">
+        <h2>Modlar</h2>
+        <div class="filter-bar">
+            <input type="text" id="search" placeholder="Mod ara...">
+            <select id="authorFilter" class="filter-select">
+                <option value="">Tüm Yazarlar</option>
+            </select>
+            <select id="sortSelect" class="filter-select">
+                <option value="name-asc">İsme Göre (A-Z)</option>
+                <option value="name-desc">İsme Göre (Z-A)</option>
+                <option value="author-asc">Yazara Göre (A-Z)</option>
+                <option value="author-desc">Yazara Göre (Z-A)</option>
+            </select>
+            <a href="https://gs-85-14-206-57.server.4netplayers.com:20820/all_mods_download?onlyActive=true" target="_blank" class="download-btn">Tüm Modları İndir</a>
+        </div>
+        <div class="virtual-list-viewport">
+            <ul class="mod-list" id="modList"></ul>
+        </div>
+        <div id="loading" class="loading">Yükleniyor...</div>
+        <div id="modInfo" class="mod-info-bar"></div>
+    </div>
+    <footer>
+        Farming Simulator 2025 © | Dostlar Konağı mod koleksiyonu<br>
+        İletişim: <b>poncikpanda</b> (Discord)
+    </footer>
+    <script>
+        function debounce(fn, delay) {
+            let timer;
+            return function (...args) {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+        async function fetchMods() {
+            const res = await fetch('/api/mods');
+            return res.json();
+        }
+        function createDownloadUrl(name) {
+            return `https://gs-85-14-206-57.server.4netplayers.com:20820/mods/${encodeURIComponent(name)}.zip`;
+        }
+        const ITEM_HEIGHT = 64;
+        const VISIBLE_COUNT = 12;
+        let allMods = [];
+        let filteredMods = [];
+        let allAuthors = [];
+        function renderMods(mods, scrollTop = 0) {
+            const list = document.getElementById('modList');
+            const viewport = document.querySelector('.virtual-list-viewport');
+            const start = Math.floor(scrollTop / ITEM_HEIGHT);
+            const end = Math.min(start + VISIBLE_COUNT, mods.length);
+            list.innerHTML = '';
+            if (mods.length === 0) {
+                list.innerHTML = '<li style="text-align:center;color:#aaa;padding:15px">Sonuç bulunamadı.</li>';
+                return;
+            }
+            list.style.paddingTop = (start * ITEM_HEIGHT) + 'px';
+            list.style.paddingBottom = ((mods.length - end) * ITEM_HEIGHT) + 'px';
+            for (let i = start; i < end; i++) {
+                const mod = mods[i];
+                const li = document.createElement('li');
+                li.className = 'mod-item';
+                li.innerHTML = `
+          <div class="mod-info">
+            <div class="mod-name">${mod.text}</div>
+            <div class="mod-id">${mod.name}</div>
+            <div class="mod-desc">${mod.author}</div>
+          </div>
+          <a class="download-btn" href="${createDownloadUrl(mod.name)}" target="_blank">İndir</a>
+        `;
+                list.appendChild(li);
+            }
+        }
+        function updateAuthorFilter() {
+            const select = document.getElementById('authorFilter');
+            const authors = Array.from(new Set(allMods.map(m => m.author).filter(Boolean))).sort((a,b)=>a.localeCompare(b));
+            allAuthors = authors;
+            select.innerHTML = '<option value="">Tüm Yazarlar</option>' + authors.map(a => `<option value="${a}">${a}</option>`).join('');
+        }
+        const searchInput = document.getElementById('search');
+        const viewport = document.querySelector('.virtual-list-viewport');
+        function doFilterSort() {
+            const q = searchInput.value.toLowerCase();
+            const author = document.getElementById('authorFilter').value;
+            const sort = document.getElementById('sortSelect').value;
+            filteredMods = allMods.filter(mod => {
+                const matchesText = (mod.name || mod.id || '').toLowerCase().includes(q) || (mod.text||'').toLowerCase().includes(q);
+                const matchesAuthor = !author || mod.author === author;
+                return matchesText && matchesAuthor;
+            });
+            if (sort === 'name-asc') filteredMods.sort((a,b)=>a.text.localeCompare(b.text));
+            else if (sort === 'name-desc') filteredMods.sort((a,b)=>b.text.localeCompare(a.text));
+            else if (sort === 'author-asc') filteredMods.sort((a,b)=>(a.author||'').localeCompare(b.author||''));
+            else if (sort === 'author-desc') filteredMods.sort((a,b)=>(b.author||'').localeCompare(a.author||''));
+            renderMods(filteredMods, viewport.scrollTop);
+        }
+        function updateModInfo() {
+            const infoDiv = document.getElementById('modInfo');
+            const date = new Date();
+            infoDiv.textContent = `Toplam mod: ${filteredMods.length} | Son güncelleme: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+        }
+        document.getElementById('search').addEventListener('input', debounce(() => {
+            doFilterSort();
+            updateModInfo();
+        }, 200));
+        document.getElementById('authorFilter').addEventListener('change', () => {
+            doFilterSort();
+            updateModInfo();
+        });
+        document.getElementById('sortSelect').addEventListener('change', () => {
+            doFilterSort();
+            updateModInfo();
+        });
+        viewport.addEventListener('scroll', () => {
+            renderMods(filteredMods, viewport.scrollTop);
+        });
+        document.getElementById('loading').style.display = 'block';
+        fetchMods().then(mods => {
+            allMods = mods;
+            filteredMods = mods;
+            updateAuthorFilter();
+            document.getElementById('loading').style.display = 'none';
+            renderMods(mods);
+            updateModInfo();
+        }).catch(() => {
+            document.getElementById('loading').textContent = 'Modlar yüklenemedi.';
+        });
+    </script>
+</body>
+</html>

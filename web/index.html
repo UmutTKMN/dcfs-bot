@@ -3,398 +3,46 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Farming Simulator 2025 - Mod Listesi</title>
+    <meta http-equiv="refresh" content="0; url=home.html">
+    <title>Dostlar Konağı FS25 | Yönlendiriliyor...</title>
+    <link rel="stylesheet" href="./style.css">
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0a0a0a url('./assets/fs-25-background.png') center center no-repeat;
-            background-size: cover;
-            background-attachment: fixed;
-            color: #f0f0f0;
-            margin: 0;
-            padding: 16px;
-            min-height: 100vh;
-            position: relative;
-        }
-
-        body::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: -1;
-        }
-
-        .container {
-            max-width: 720px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: rgba(10, 10, 10, 0.342);
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(80, 160, 0, 0.2);
-        }
-
-        .header {
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 24px;
-            flex-direction: column;
+            min-block-size: 100vh;
+            background: var(--main-bg);
+            color: var(--main-fg);
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        .redirect-box {
+            background: var(--card-bg);
+            padding: 36px 48px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
             text-align: center;
         }
 
-        .logo {
-            width: 80px;
-            height: 80px;
-            margin-bottom: 16px;
+        .redirect-box h1 {
+            color: var(--accent);
+            margin-block-end: 18px;
         }
 
-        h1 {
-            font-size: 1.8rem;
-            font-weight: 600;
-            margin: 0;
-            color: #fff;
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
-            line-height: 1.3;
-        }
-
-        .subtitle {
-            font-size: 1.4rem;
-            color: #72b01d;
-            font-weight: 500;
-        }
-
-        input[type="text"] {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 4px;
-            background: #1e1e1e;
-            color: #f0f0f0;
-            font-size: 1rem;
-            margin-bottom: 20px;
-            box-sizing: border-box;
-            border: 1px solid #333;
-        }
-
-        input[type="text"]:focus {
-            outline: none;
-            border-color: #72b01d;
-            box-shadow: 0 0 0 1px #72b01d;
-        }
-
-        .virtual-list-viewport {
-            max-height: 60vh;
-            overflow-y: auto;
-            border-radius: 4px;
-            border: 1px solid #333;
-            background-color: rgba(20, 20, 20, 0.7);
-        }
-
-        .mod-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .mod-item {
-            background: rgba(30, 30, 30, 0.7);
-            margin: 8px;
-            border-radius: 4px;
-            padding: 12px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-left: 3px solid #72b01d;
-            transition: all 0.2s ease;
-        }
-
-        .mod-item:hover {
-            background: rgba(40, 40, 40, 0.9);
-            transform: translateX(2px);
-        }
-
-        .mod-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .mod-name {
-            font-size: 1.05rem;
-            font-weight: 500;
-            color: #fff;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .mod-desc {
-            color: #bbb;
-            font-size: 0.85rem;
-            margin-top: 4px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .mod-desc:empty {
-            display: none;
-        }
-
-        .download-btn {
-            background: #72b01d;
-            color: #fff;
-            border: none;
-            border-radius: 4px;
-            padding: 8px 14px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            text-decoration: none;
-            margin-left: 12px;
-            white-space: nowrap;
-            transition: background 0.2s;
-            font-weight: 500;
-        }
-
-        .download-btn:hover {
-            background: #5a8c17;
-        }
-
-        .loading {
-            text-align: center;
-            margin: 20px 0;
-            color: #72b01d;
-            font-weight: 500;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 0.8rem;
-            color: #888;
-        }
-
-        /* Özel scrollbar */
-        .virtual-list-viewport::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .virtual-list-viewport::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.2);
-        }
-
-        .virtual-list-viewport::-webkit-scrollbar-thumb {
-            background: #72b01d;
-            border-radius: 4px;
-        }
-
-        @media (max-width: 700px) {
-            .container {
-                padding: 15px;
-            }
-
-            .virtual-list-viewport {
-                max-height: 65vh;
-            }
-
-            h1 {
-                font-size: 1.5rem;
-            }
-
-            .subtitle {
-                font-size: 1.2rem;
-            }
-
-            .logo {
-                width: 60px;
-                height: 60px;
-            }
+        .redirect-box a {
+            color: var(--accent);
+            text-decoration: underline;
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <div class="header">
-            <img src="./assets/letter-d.png" alt="FS25 Logo" class="logo">
-            <h1>Farming Simulator 2025<br><span class="subtitle">Mod Listesi</span></h1>
-            <!-- Sunucu tanıtımı ve Discord davet butonu -->
-            <div style="margin-top:10px;">
-                <span style="color:#bbb;font-size:1rem;">
-                    Dostlar Konağı FS25 sunucusuna hoş geldiniz! Katılmak ve destek almak için Discord sunucumuza bekleriz.
-                </span>
-                <br>
-                <a href="https://discord.gg/yQ7XNK6RyN" target="_blank" style="display:inline-block;margin-top:8px;padding:8px 18px;background:#5865F2;color:#fff;border-radius:4px;text-decoration:none;font-weight:500;">
-                    Discord'a Katılmak İçin Tıklayın
-                </a>
-            </div>
-        </div>
-        <div class="filter-bar" style="display:flex;gap:10px;margin-bottom:18px;align-items:center;flex-wrap:wrap;">
-            <input type="text" id="search" placeholder="Mod ara..." style="flex:2;min-width:140px;max-width:220px;">
-            <select id="authorFilter" class="filter-select" style="flex:1;min-width:110px;max-width:180px;background:#1e1e1e;color:#f0f0f0;border:1px solid #333;border-radius:4px;padding:8px;">
-                <option value="">Tüm Yazarlar</option>
-            </select>
-            <select id="sortSelect" class="filter-select" style="flex:1;min-width:110px;max-width:180px;background:#1e1e1e;color:#f0f0f0;border:1px solid #333;border-radius:4px;padding:8px;">
-                <option value="name-asc">İsme Göre (A-Z)</option>
-                <option value="name-desc">İsme Göre (Z-A)</option>
-                <option value="author-asc">Yazara Göre (A-Z)</option>
-                <option value="author-desc">Yazara Göre (Z-A)</option>
-            </select>
-            <a href="https://gs-85-14-206-57.server.4netplayers.com:20820/all_mods_download?onlyActive=true" target="_blank" class="download-btn" style="flex:none;min-width:140px;max-height:40px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:0.97rem;white-space:nowrap;">Tüm Modları İndir</a>
-        </div>
-        <div class="virtual-list-viewport">
-            <ul class="mod-list" id="modList"></ul>
-        </div>
-        <div id="loading" class="loading">Yükleniyor...</div>
-        <!-- Mod listesi hakkında bilgi -->
-        <div id="modInfo" style="text-align:center;color:#aaa;font-size:0.95rem;margin:10px 0 0 0;"></div>
-        <!-- Kurallar/Bilgilendirme -->
-        <div style="margin:18px 0 0 0;padding:12px 16px;background:rgba(40,60,10,0.13);border-radius:6px;color:#cfc;">
-            <b>Kurallar & Bilgilendirme:</b>
-            <ul style="margin:8px 0 0 18px;padding:0;font-size:0.95rem;color:#cfc;">
-                <li>Sunucuya katılmadan önce Discord'daki kuralları okuyun.</li>
-                <li>Modları indirirken bağlantı sorunları yaşarsanız Discord'dan destek alın.</li>
-                <li>Modlar düzenli olarak güncellenir, eski sürümleri silmeniz önerilir.</li>
-            </ul>
-        </div>
-        <div class="footer">
-            Farming Simulator 2025 © | Dostlar Konağı mod koleksiyonu<br>
-            İletişim: <b>poncikpanda</b> (Discord)<br>
-            <span id="versionInfo"></span>
-        </div>
+    <div class="redirect-box">
+        <h1>Dostlar Konağı FS25</h1>
+        <p>Ana sayfaya yönlendiriliyorsunuz...</p>
+        <p>Eğer otomatik yönlendirilmezseniz <a href="home.html">buraya tıklayın</a>.</p>
     </div>
-    <script>
-        // Debounce fonksiyonu
-        function debounce(fn, delay) {
-            let timer;
-            return function (...args) {
-                clearTimeout(timer);
-                timer = setTimeout(() => fn.apply(this, args), delay);
-            };
-        }
-
-        async function fetchMods() {
-            const res = await fetch('/api/mods');
-            return res.json();
-        }
-
-        function createDownloadUrl(name) {
-            return `https://gs-85-14-206-57.server.4netplayers.com:20820/mods/${encodeURIComponent(name)}.zip`;
-        }
-
-        // Sanal listeleme için parametreler
-        const ITEM_HEIGHT = 64;
-        const VISIBLE_COUNT = 12;
-        let allMods = [];
-        let filteredMods = [];
-        let allAuthors = [];
-
-        function renderMods(mods, scrollTop = 0) {
-            const list = document.getElementById('modList');
-            const viewport = document.querySelector('.virtual-list-viewport');
-            const start = Math.floor(scrollTop / ITEM_HEIGHT);
-            const end = Math.min(start + VISIBLE_COUNT, mods.length);
-
-            list.innerHTML = '';
-            if (mods.length === 0) {
-                list.innerHTML = '<li style="text-align:center;color:#aaa;padding:15px">Sonuç bulunamadı.</li>';
-                return;
-            }
-
-            // Boş alanı doldurmak için padding
-            list.style.paddingTop = (start * ITEM_HEIGHT) + 'px';
-            list.style.paddingBottom = ((mods.length - end) * ITEM_HEIGHT) + 'px';
-
-            for (let i = start; i < end; i++) {
-                const mod = mods[i];
-                const li = document.createElement('li');
-                li.className = 'mod-item';
-                li.innerHTML = `
-          <div class="mod-info">
-            <div class="mod-name">${mod.text}</div>
-            <div class="mod-id">${mod.name}</div>
-            <div class="mod-desc">${mod.author}</div>
-          </div>
-          <a class="download-btn" href="${createDownloadUrl(mod.name)}" target="_blank">İndir</a>
-        `;
-                list.appendChild(li);
-            }
-        }
-
-        function updateAuthorFilter() {
-            const select = document.getElementById('authorFilter');
-            const authors = Array.from(new Set(allMods.map(m => m.author).filter(Boolean))).sort((a,b)=>a.localeCompare(b));
-            allAuthors = authors;
-            select.innerHTML = '<option value="">Tüm Yazarlar</option>' + authors.map(a => `<option value="${a}">${a}</option>`).join('');
-        }
-
-        // Arama kutusu için debounce ile performanslı filtreleme
-        const searchInput = document.getElementById('search');
-        const viewport = document.querySelector('.virtual-list-viewport');
-
-        function doFilterSort() {
-            const q = searchInput.value.toLowerCase();
-            const author = document.getElementById('authorFilter').value;
-            const sort = document.getElementById('sortSelect').value;
-            filteredMods = allMods.filter(mod => {
-                const matchesText = (mod.name || mod.id || '').toLowerCase().includes(q) || (mod.text||'').toLowerCase().includes(q);
-                const matchesAuthor = !author || mod.author === author;
-                return matchesText && matchesAuthor;
-            });
-            // Sıralama
-            if (sort === 'name-asc') filteredMods.sort((a,b)=>a.text.localeCompare(b.text));
-            else if (sort === 'name-desc') filteredMods.sort((a,b)=>b.text.localeCompare(a.text));
-            else if (sort === 'author-asc') filteredMods.sort((a,b)=>(a.author||'').localeCompare(b.author||''));
-            else if (sort === 'author-desc') filteredMods.sort((a,b)=>(b.author||'').localeCompare(a.author||''));
-            renderMods(filteredMods, viewport.scrollTop);
-        }
-
-        // Mod sayısı ve güncelleme tarihi gösterimi
-        function updateModInfo() {
-            const infoDiv = document.getElementById('modInfo');
-            const date = new Date();
-            infoDiv.textContent = `Toplam mod: ${filteredMods.length} | Son güncelleme: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-        }
-
-        // Footer'da sürüm bilgisi
-        document.getElementById('versionInfo').textContent = "Bot Sürümü: v1.0.0";
-
-        searchInput.addEventListener('input', debounce(() => {
-            doFilterSort();
-            updateModInfo();
-        }, 200));
-        document.getElementById('authorFilter').addEventListener('change', () => {
-            doFilterSort();
-            updateModInfo();
-        });
-        document.getElementById('sortSelect').addEventListener('change', () => {
-            doFilterSort();
-            updateModInfo();
-        });
-
-        // Sanal listeleme için scroll event
-        viewport.addEventListener('scroll', () => {
-            renderMods(filteredMods, viewport.scrollTop);
-        });
-
-        // Yükleniyor animasyonu ve veri çekme
-        document.getElementById('loading').style.display = 'block';
-        fetchMods().then(mods => {
-            allMods = mods;
-            filteredMods = mods;
-            updateAuthorFilter();
-            document.getElementById('loading').style.display = 'none';
-            renderMods(mods);
-            updateModInfo();
-        }).catch(() => {
-            document.getElementById('loading').textContent = 'Modlar yüklenemedi.';
-        });
-    </script>
 </body>
 
 </html>

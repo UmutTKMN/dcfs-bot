@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sunucu Hakkında | Dostlar Konağı FS25</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <nav class="main-nav">
+      <a href="home.html" class="nav-link">Anasayfa</a>
+      <a href="server.html" class="nav-link active">Sunucu Hakkında</a>
+      <a href="gallery.html" class="nav-link">Galeri</a>
+      <a href="mods.html" class="nav-link">Modlar</a>
+      <a href="rules.html" class="nav-link">Kurallar</a>
+      <a href="contact.html" class="nav-link">İletişim</a>
+    </nav>
+    <div class="container">
+        <h2>Sunucu Hakkında</h2>
+        <div id="serverInfoBox" class="server-info-box">
+            <div id="serverInfoLoading">Yükleniyor...</div>
+            <div id="serverInfoContent" style="display:none;">
+                <div class="server-name" id="serverName"></div>
+                <div><b>Oyun:</b> <span id="serverGame"></span></div>
+                <div><b>Sürüm:</b> <span id="serverVersion"></span></div>
+                <div><b>Harita:</b> <span id="serverMap"></span></div>
+                <div><b>Durum:</b> <span id="serverStatus"></span></div>
+                <div class="server-desc">Dostlar Konağı FS25 sunucusu, topluluk için optimize edilmiş, güncel ve güvenli bir oyun ortamı sunar.</div>
+            </div>
+        </div>
+    </div>
+    <footer>
+        Farming Simulator 2025 © | Dostlar Konağı mod koleksiyonu<br>
+        İletişim: <b>poncikpanda</b> (Discord)
+    </footer>
+    <script>
+    async function fetchServerInfo() {
+        try {
+            const res = await fetch('/api/server');
+            const data = await res.json();
+            document.getElementById('serverInfoLoading').style.display = 'none';
+            const content = document.getElementById('serverInfoContent');
+            content.style.display = '';
+            document.getElementById('serverName').textContent = data.name;
+            document.getElementById('serverGame').textContent = data.game;
+            document.getElementById('serverVersion').textContent = data.version;
+            document.getElementById('serverMap').textContent = data.mapName;
+            const statusEl = document.getElementById('serverStatus');
+            statusEl.textContent = data.online ? 'Çevrimiçi' : 'Kapalı';
+            statusEl.style.color = data.online ? '#72b01d' : '#f04747';
+        } catch {
+            document.getElementById('serverInfoLoading').textContent = 'Sunucu bilgisi alınamadı.';
+        }
+    }
+    fetchServerInfo();
+    </script>
+</body>
+</html>
