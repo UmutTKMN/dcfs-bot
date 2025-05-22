@@ -1,6 +1,7 @@
 .vscode
 .gitignore
 .env
+nginx.conf
 logs
 data
 node_modules

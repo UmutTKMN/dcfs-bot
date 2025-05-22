@@ -5,7 +5,7 @@ const cors = require('cors');
 
 function startModsApiServer() {
   const app = express();
-  const PORT = 3001;
+  const PORT = 5143;
 
   app.use(cors());
 
@@ -26,8 +26,8 @@ function startModsApiServer() {
     });
   });
 
-  app.listen(PORT, () => {
-    console.log(`API sunucusu http://localhost:${PORT} adresinde çalışıyor.`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`API sunucusu http://0.0.0.0:${PORT} adresinde çalışıyor.`);
   });
 }
 
