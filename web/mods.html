@@ -80,31 +80,20 @@
             document.getElementById('loading').style.display = 'block';
             try {
                 const res = await fetch('/api/mods');
-                const modsRaw = await res.json();
-                // Sunucu bilgisi ilk modun başında veya ayrı bir modül olarak geliyorsa
-                // Burada örnek olarak ilk modun başında server bilgisi var varsayalım:
-                // { server: {...}, mods: [...] }
-                // Ama senin sisteminde sadece modlar array'i geliyor, sunucu bilgisi yoksa, ilk modun başında server bilgisi yoksa, sunucu bilgisi gösterilmez.
-                // Eğer modlar array'inin başında server bilgisi varsa:
-                let server = null;
-                let mods = modsRaw;
-                if (modsRaw.length && modsRaw[0] && modsRaw[0]._isServerInfo) {
-                    server = modsRaw[0];
-                    mods = modsRaw.slice(1);
-                }
-                // Eğer modlar array'inde server bilgisi yoksa, sunucu kutusunu gizle
-                if (server) {
-                    document.getElementById('serverInfoLoading').style.display = 'none';
-                    const content = document.getElementById('serverInfoContent');
-                    content.style.display = '';
-                    document.getElementById('serverName').textContent = server.name;
-                    document.getElementById('serverGame').textContent = server.game;
-                    document.getElementById('serverVersion').textContent = server.version;
-                    document.getElementById('serverMap').textContent = server.mapName;
-                    const statusEl = document.getElementById('serverStatus');
-                    statusEl.textContent = server.online ? 'Çevrimiçi' : 'Kapalı';
-                    statusEl.className = server.online ? 'text-green-400 font-bold' : 'text-red-400 font-bold';
-                }
+                const data = await res.json();
+                const server = data.server;
+                const mods = data.mods;
+                // Sunucu bilgisi kutusunu doldur
+                document.getElementById('serverInfoLoading').style.display = 'none';
+                const content = document.getElementById('serverInfoContent');
+                content.style.display = '';
+                document.getElementById('serverName').textContent = server.name;
+                document.getElementById('serverGame').textContent = server.game;
+                document.getElementById('serverVersion').textContent = server.version;
+                document.getElementById('serverMap').textContent = server.mapName;
+                const statusEl = document.getElementById('serverStatus');
+                statusEl.textContent = server.online ? 'Çevrimiçi' : 'Kapalı';
+                statusEl.className = server.online ? 'text-green-400 font-bold' : 'text-red-400 font-bold';
                 allMods = mods;
                 filteredMods = mods;
                 document.getElementById('loading').style.display = 'none';

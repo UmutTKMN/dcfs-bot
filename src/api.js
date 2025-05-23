@@ -19,7 +19,8 @@ function startApiServer() {
       try {
         const json = JSON.parse(data);
         const mods = Object.values(json.mods || {});
-        res.json(mods);
+        const server = json.server || {};
+        res.json({ server, mods });
       } catch (e) {
         res.status(500).json({ error: "JSON parse hatası." });
       }
