@@ -26,8 +26,7 @@
     </style>
 </head>
 
-<body class="bg-gray-950 text-gray-100 font-sans min-h-screen relative"
-    style="background-image: url('./assets/fs-25-background.png'); background-size: cover; background-position: center; background-attachment: fixed;">
+<body class="bg-gray-950 text-gray-100 font-sans min-h-screen relative">
     <nav class="flex flex-wrap justify-center gap-3 py-6 mb-8 bg-gray-900/80 rounded-b-xl shadow">
         <a href="home.html" class="px-4 py-2 rounded font-medium text-gray-200 hover:bg-gray-800">Anasayfa</a>
         <a href="mods.html" class="px-4 py-2 rounded font-medium text-blue-400 bg-gray-800">Sunucu & Modlar</a>
@@ -37,9 +36,9 @@
     </nav>
     <main class="max-w-3xl mx-auto px-4">
         <!-- Sunucu Hakkında Bölümü -->
-        <section class="mb-10">
+        <section class="mb-10 hidden">
             <h2 class="text-xl font-bold text-blue-400 mb-6 text-center">Sunucu Hakkında</h2>
-            <div id="serverInfoBox" class="bg-gray-900 rounded-xl shadow p-6 flex flex-col items-center">
+            <div id="serverInfoBox" class="bg-gray-900 rounded-lg shadow p-6 flex flex-col items-center">
                 <div id="serverInfoLoading" class="text-gray-400">Yükleniyor...</div>
                 <div id="serverInfoContent" style="display:none;">
                     <div class="text-lg font-semibold text-blue-300 mb-2" id="serverName"></div>
@@ -57,7 +56,7 @@
             <h2 class="text-xl font-bold text-blue-400 mb-6 text-center">Modlar</h2>
             <div class="flex flex-wrap gap-3 mb-6 items-center justify-center">
                 <input type="text" id="search" placeholder="Mod ara..."
-                    class="px-3 py-2 rounded bg-gray-800 text-gray-100 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition w-full sm:w-1/2">
+                    class="px-3 py-2 rounded bg-gray-900 text-gray-100 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition w-full sm:w-1/2">
                 <a href="https://gs-85-14-206-57.server.4netplayers.com:20820/all_mods_download?onlyActive=true"
                     target="_blank"
                     class="inline-block px-4 py-2 bg-blue-500 text-white font-semibold rounded shadow hover:bg-blue-600 transition">Tüm

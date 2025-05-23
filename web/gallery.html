@@ -43,15 +43,12 @@
         <div id="popupModal"
             class="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 px-0 py-0 md:py-0 hidden">
             <div
-                class="bg-gray-900 rounded-lg shadow-2xl flex flex-col md:flex-row max-w-[96vw] max-h-[96vh] w-full h-full md:h-auto mx-0 relative overflow-hidden">
+                class="rounded-lg shadow-2xl flex flex-col md:flex-row max-w-[96vw] max-h-[96vh] h-full md:h-auto mx-0 relative overflow-hidden">
                 <button id="popupClose"
-                    class="absolute top-3 right-4 text-gray-300 hover:text-white text-3xl font-bold z-10">&times;</button>
+                    class="absolute top-3 right-4 text-gray-700 hover:text-gray-800 transition-all cursor-pointer text-3xl font-bold z-10">&times;</button>
                 <img id="popupImg" src="" alt="Büyük Görsel"
-                    class="h-[60vh] md:h-[90vh] w-full md:w-auto max-w-[70vw] object-cover bg-black rounded-lg-2xl">
-                <div class="flex-1 flex flex-col justify-center items-center p-4 md:p-8 min-w-[140px] max-w-[400px]">
-                    <div id="popupCaption" class="text-gray-100 text-lg md:text-2xl font-semibold text-center mb-2">
-                    </div>
-                </div>
+                    class="h-[60vh] md:h-[90vh] w-full md:w-auto max-w-[96vw] object-cover bg-black rounded-lg-2xl">
+                <!-- Caption kaldırıldı, sadece resim görünüyor -->
             </div>
         </div>
     </main>
@@ -88,7 +85,6 @@
         // Popup fonksiyonları
         function openPopup(src, caption) {
             document.getElementById('popupImg').src = src;
-            document.getElementById('popupCaption').textContent = caption || '';
             document.getElementById('popupModal').classList.remove('hidden');
             document.getElementById('footer').classList.add('hidden');
             document.body.style.overflow = 'hidden';
@@ -96,7 +92,6 @@
         function closePopup() {
             document.getElementById('popupModal').classList.add('hidden');
             document.getElementById('popupImg').src = '';
-            document.getElementById('popupCaption').textContent = '';
             document.getElementById('footer').classList.remove('hidden');
             document.body.style.overflow = '';
         }
