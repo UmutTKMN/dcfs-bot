@@ -23,7 +23,7 @@ module.exports = {
         ephemeral: true,
       });
     }
-    const uptimePath = path.join(__dirname, "../../data/uptime_data.json");
+    const uptimePath = path.join(__dirname, "../../data/fs25_uptime.json");
     // Yedekle
     if (fs.existsSync(uptimePath)) {
       const backupPath =
