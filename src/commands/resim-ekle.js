@@ -19,11 +19,11 @@ module.exports = {
         .setRequired(false)
     ),
   async execute(interaction) {
-    // SADECE BELİRLİ ROL KULLANABİLSİN
-    const YETKILI_ROL_ID = "786708376816975934"; // Buraya izin verilen rolün ID'sini yaz
-    if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) {
+    // SADECE DOSYA YÜKLEME YETKİSİ OLANLAR KULLANABİLSİN
+    if (!interaction.member.permissions.has("AttachFiles")) {
       return interaction.reply({
-        content: "Bu komutu kullanmak için yetkiniz yok.",
+        content:
+          "Bu komutu kullanmak için dosya yükleme (Attach Files) yetkiniz olmalı.",
         ephemeral: true,
       });
     }
@@ -58,14 +58,22 @@ module.exports = {
     const buffer = Buffer.from(await res.arrayBuffer());
     fs.writeFileSync(filePath, buffer);
     // Galeri JSON güncelle
-    const galleryJsonPath = path.join(__dirname, "../../data/fs25_gallery.json");
+    const galleryJsonPath = path.join(
+      __dirname,
+      "../../data/fs25_gallery.json"
+    );
     let gallery = [];
     if (fs.existsSync(galleryJsonPath)) {
       try {
         gallery = JSON.parse(fs.readFileSync(galleryJsonPath, "utf8"));
-      } catch { }
+      } catch {}
     }
-    gallery.push({ src: `./assets/gallery/${fileName}`, caption });
+    // Yükleyen kullanıcıyı ekle
+    gallery.push({
+      src: `./assets/gallery/${fileName}`,
+      caption,
+      uploader: interaction.user.tag,
+    });
     fs.writeFileSync(galleryJsonPath, JSON.stringify(gallery, null, 2), "utf8");
     await interaction.reply({
       content: "Resim başarıyla galeriye eklendi!",

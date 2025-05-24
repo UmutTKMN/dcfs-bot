@@ -43,12 +43,9 @@ module.exports = {
       )
       .setTimestamp();
 
-    // Duyuruyu ana kanala gönder
-    const channelId =
-      interaction.guild?.systemChannelId ||
-      process.env.FS25_BOT_UPDATE_CHANNEL_ID;
-    const channel =
-      interaction.guild.channels.cache.get(channelId) || interaction.channel;
+    // Duyuruyu uptime verilerinin paylaşıldığı kanala gönder
+    const channelId = process.env.FS25_BOT_DAILY_SUMMARY_CHANNEL_ID;
+    const channel = interaction.guild.channels.cache.get(channelId) || interaction.channel;
     await channel.send({ embeds: [embed] });
 
     // Son olarak komutu kullanan kişiye bilgi ver
