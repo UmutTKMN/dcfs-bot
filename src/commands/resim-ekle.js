@@ -20,7 +20,7 @@ module.exports = {
     ),
   async execute(interaction) {
     // SADECE BELİRLİ ROL KULLANABİLSİN
-    const YETKILI_ROL_ID = "786707483594719272"; // Buraya izin verilen rolün ID'sini yaz
+    const YETKILI_ROL_ID = "786708376816975934"; // Buraya izin verilen rolün ID'sini yaz
     if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) {
       return interaction.reply({
         content: "Bu komutu kullanmak için yetkiniz yok.",
