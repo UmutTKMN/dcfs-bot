@@ -193,7 +193,7 @@ const utils = {
       const server = {
         game: serverAttributes.game || previousServer?.game || "Farming Simulator 25",
         version: serverAttributes.version || previousServer?.version || "Bilinmiyor",
-        name: utils.fixColorCodes(serverAttributes.name || previousServer?.name || "Bilinmiyor"),
+        name: serverAttributes.name || previousServer?.name || "Bilinmiyor",
         mapName: serverAttributes.mapName || previousServer?.mapName || "Bilinmiyor",
         online: true,
         unreachable: false,
@@ -211,7 +211,7 @@ const utils = {
           .filter(mod => mod && mod._attributes) // Geçersiz modları filtrele
           .map((mod) => ({
             hash: mod._attributes.hash || "",
-            text: utils.fixColorCodes(mod._text || mod._attributes.name || "Bilinmiyor"),
+            text: mod._text || mod._attributes.name || "Bilinmiyor",
             name: mod._attributes.name || "",
             version: mod._attributes.version || "1.0.0.0",
             author: mod._attributes.author || "Bilinmiyor",
