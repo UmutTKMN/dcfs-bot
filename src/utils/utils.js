@@ -69,66 +69,108 @@ const utils = {
 
     try {
       console.log("🔄 API verisi alınıyor...");
+      
+      // Her endpoint için ayrı ayrı kontrol et
+      const serverStatsUrl = process.env.FS25_BOT_URL_SERVER_STATS;
+      const careerSavegameUrl = process.env.FS25_BOT_URL_CAREER_SAVEGAME;
+      
+      console.log(`📡 Server Stats URL: ${serverStatsUrl}`);
+      console.log(`📡 Career Savegame URL: ${careerSavegameUrl}`);
 
       const [serverStatsResponse, careerSavegameResponse] = await Promise.all([
-        fetch(process.env.FS25_BOT_URL_SERVER_STATS, {
+        fetch(serverStatsUrl, {
           retries,
           retryDelay,
           body: null,
           method: "GET",
-          timeout: 10000, // 10 saniye timeout
+          timeout: 15000, // 15 saniye timeout (artırıldı)
+          headers: {
+            'User-Agent': 'FS25-Discord-Bot/1.0',
+            'Accept': 'application/xml, text/xml, */*'
+          }
         }).catch(err => {
           console.error("❌ Server stats fetch hatası:", err.message);
-          errors.push(`Server stats API hatası: ${err.message}`);
+          console.error("📊 Hata detayları:", err.stack);
+          errors.push(`Server stats API hatası: ${err.message} (URL: ${serverStatsUrl})`);
           return null;
         }),
-        fetch(process.env.FS25_BOT_URL_CAREER_SAVEGAME, {
+        fetch(careerSavegameUrl, {
           retries,
           retryDelay,
           body: null,
           method: "GET",
-          timeout: 10000, // 10 saniye timeout
+          timeout: 15000, // 15 saniye timeout (artırıldı)
+          headers: {
+            'User-Agent': 'FS25-Discord-Bot/1.0',
+            'Accept': 'application/xml, text/xml, */*'
+          }
         }).catch(err => {
           console.error("❌ Career savegame fetch hatası:", err.message);
-          errors.push(`Career savegame API hatası: ${err.message}`);
+          console.error("📊 Hata detayları:", err.stack);
+          errors.push(`Career savegame API hatası: ${err.message} (URL: ${careerSavegameUrl})`);
           return null;
         })
       ]);
 
       if (!serverStatsResponse || !careerSavegameResponse) {
-        throw new Error(`API yanıt hatası: ${errors.join(", ")}`);
+        const errorMessage = `API yanıt hatası: ${errors.join(", ")}`;
+        console.error(`❌ ${errorMessage}`);
+        throw new Error(errorMessage);
       }
 
       console.log(`✅ Server stats status: ${serverStatsResponse.status}`);
       console.log(`✅ Career savegame status: ${careerSavegameResponse.status}`);
 
+      // HTTP durum kodlarını kontrol et
       if (!serverStatsResponse.ok) {
-        errors.push(`Server stats HTTP ${serverStatsResponse.status}: ${serverStatsResponse.statusText}`);
+        const errorMsg = `Server stats HTTP ${serverStatsResponse.status}: ${serverStatsResponse.statusText}`;
+        console.error(`❌ ${errorMsg}`);
+        errors.push(errorMsg);
       }
 
       if (!careerSavegameResponse.ok) {
-        errors.push(`Career savegame HTTP ${careerSavegameResponse.status}: ${careerSavegameResponse.statusText}`);
+        const errorMsg = `Career savegame HTTP ${careerSavegameResponse.status}: ${careerSavegameResponse.statusText}`;
+        console.error(`❌ ${errorMsg}`);
+        errors.push(errorMsg);
       }
 
       if (errors.length > 0) {
-        throw new Error(`HTTP hataları: ${errors.join(", ")}`);
+        const errorMessage = `HTTP hataları: ${errors.join(", ")}`;
+        console.error(`❌ ${errorMessage}`);
+        throw new Error(errorMessage);
       }
 
+      // XML içeriğini al
       const [serverStatsXml, careerSavegameXml] = await Promise.all([
         serverStatsResponse.text().catch(err => {
           console.error("❌ Server stats XML okuma hatası:", err.message);
+          console.error("📊 Response headers:", Object.fromEntries(serverStatsResponse.headers));
           errors.push(`Server stats XML okuma hatası: ${err.message}`);
           return null;
         }),
         careerSavegameResponse.text().catch(err => {
           console.error("❌ Career savegame XML okuma hatası:", err.message);
+          console.error("📊 Response headers:", Object.fromEntries(careerSavegameResponse.headers));
           errors.push(`Career savegame XML okuma hatası: ${err.message}`);
           return null;
         })
       ]);
 
       if (!serverStatsXml || !careerSavegameXml) {
-        throw new Error(`XML okuma hataları: ${errors.join(", ")}`);
+        const errorMessage = `XML okuma hataları: ${errors.join(", ")}`;
+        console.error(`❌ ${errorMessage}`);
+        throw new Error(errorMessage);
+      }
+
+      // XML içeriğini doğrula
+      if (serverStatsXml.length === 0) {
+        console.error("❌ Server stats XML boş");
+        errors.push("Server stats XML boş");
+      }
+      
+      if (careerSavegameXml.length === 0) {
+        console.error("❌ Career savegame XML boş");
+        errors.push("Career savegame XML boş");
       }
 
       // XML içeriğini logla (kısaltılmış)
@@ -139,23 +181,30 @@ const utils = {
       let serverStats, careerSavegame;
 
       try {
-        serverStats = JSON.parse(convert.xml2json(serverStatsXml, { compact: true }));
+        serverStats = JSON.parse(convert.xml2json(serverStatsXml, { compact: true, ignoreComment: true, ignoreInstruction: true }));
+        console.log("✅ Server stats XML başarıyla parse edildi");
       } catch (xmlError) {
         console.error("❌ Server stats XML parse hatası:", xmlError.message);
+        console.error("📊 Problematik XML (ilk 500 karakter):", serverStatsXml.substring(0, 500));
         errors.push(`Server stats XML parse hatası: ${xmlError.message}`);
       }
 
       try {
-        careerSavegame = JSON.parse(convert.xml2json(careerSavegameXml, { compact: true }));
+        careerSavegame = JSON.parse(convert.xml2json(careerSavegameXml, { compact: true, ignoreComment: true, ignoreInstruction: true }));
+        console.log("✅ Career savegame XML başarıyla parse edildi");
       } catch (xmlError) {
         console.error("❌ Career savegame XML parse hatası:", xmlError.message);
+        console.error("📊 Problematik XML (ilk 500 karakter):", careerSavegameXml.substring(0, 500));
         errors.push(`Career savegame XML parse hatası: ${xmlError.message}`);
       }
 
       if (errors.length > 0) {
-        throw new Error(`XML parse hataları: ${errors.join(", ")}`);
+        const errorMessage = `XML parse hataları: ${errors.join(", ")}`;
+        console.error(`❌ ${errorMessage}`);
+        throw new Error(errorMessage);
       }
 
+      console.log("✅ Tüm API verileri başarıyla alındı ve parse edildi");
       return {
         serverStats,
         careerSavegame,
@@ -163,7 +212,22 @@ const utils = {
 
     } catch (error) {
       console.error("❌ getDataFromAPI genel hatası:", error.message);
-      throw new Error(`API veri alma hatası: ${error.message}`);
+      console.error("📊 Hata stack:", error.stack);
+      
+      // Hata tipine göre daha açıklayıcı mesaj
+      let detailedError = `API veri alma hatası: ${error.message}`;
+      
+      if (error.message.includes('timeout')) {
+        detailedError += " (Sunucu yanıt verme süresini aştı)";
+      } else if (error.message.includes('ECONNRESET')) {
+        detailedError += " (Bağlantı resetlendi)";
+      } else if (error.message.includes('ENOTFOUND')) {
+        detailedError += " (Sunucu bulunamadı)";
+      } else if (error.message.includes('certificate')) {
+        detailedError += " (SSL sertifika hatası)";
+      }
+      
+      throw new Error(detailedError);
     }
   },
 
