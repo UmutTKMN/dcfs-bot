@@ -1,13 +1,9 @@
 .vscode
 .gitignore
 .env
-nginx.conf
 logs
 data
 node_modules
-backup
 web/assets/gallery
 
 package-lock.json
-.gitignore
-update.txt
